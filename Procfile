@@ -1,1 +1,1 @@
-web: gunicorn digitalshield.wsgi:application
+web: python manage.py migrate && gunicorn digitalshield.wsgi:application
