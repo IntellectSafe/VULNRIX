@@ -424,11 +424,13 @@ tr:hover { background-color: hsl(var(--muted) / 0.5); }
 
 /* Responsive */
 @media (max-width: 1024px) {
+    /* Sidebar collapse for Tablets/Small Laptops */
     .sidebar { 
         transform: translateX(-100%); 
         transition: transform 0.3s ease-in-out;
         position: fixed;
         z-index: 100;
+        box-shadow: none;
     }
     .sidebar.open { 
         transform: translateX(0); 
@@ -453,8 +455,11 @@ tr:hover { background-color: hsl(var(--muted) / 0.5); }
         top: 0; left: 0; right: 0;
         z-index: 40;
     }
-    
-    /* Cards stack on mobile */
+}
+
+/* Mobile Specific (Phones) */
+@media (max-width: 768px) {
+    /* Stack Layouts */
     .grid { gap: 1rem; }
     .card { padding: 1rem; }
     
@@ -472,9 +477,9 @@ tr:hover { background-color: hsl(var(--muted) / 0.5); }
     footer { padding: 1rem; }
     footer .flex { flex-direction: column; gap: 0.5rem; }
     
-    /* Form inputs full width */
+    /* Mobile Buttons - Full Width for better touch targets */
     .btn { width: 100%; justify-content: center; }
-    .btn--sm { width: auto; }
+    .btn--sm { width: auto; } /* Keep small buttons (like badges/actions) auto width */
     
     /* Hide chart overflow */
     canvas { max-width: 100%; }
@@ -484,19 +489,13 @@ tr:hover { background-color: hsl(var(--muted) / 0.5); }
 @media (max-width: 480px) {
     .main-content { padding: 0.75rem; padding-top: 4rem; }
     .card { padding: 0.75rem; }
-    h1 { font-size: 1.25rem; }
+    
+    /* Typography tweaks */
     .text-3xl { font-size: 1.5rem; }
     .text-2xl { font-size: 1.25rem; }
     
     /* Table cells smaller */
     td, th { padding: 0.5rem; font-size: 0.75rem; }
-    
-    /* Scan results page - risk circle */
-    .w-48 { width: 8rem; height: 8rem; }
-    
-    /* Stack buttons vertically */
-    .flex.gap-2 { flex-direction: column; }
-    .flex.gap-3 { flex-direction: column; }
     
     /* Break long text */
     .font-mono { word-break: break-all; }

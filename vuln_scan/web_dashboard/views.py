@@ -127,8 +127,22 @@ def dashboard(request):
         if not file:
             return JsonResponse({"error": "No file uploaded"}, status=400)
 
+        # Enforce file size limits
+        size_limits = {
+            'fast': 20 * 1024 * 1024,   # 20MB
+            'hybrid': 2 * 1024 * 1024,  # 2MB
+            'deep': 1 * 1024 * 1024     # 1MB
+        }
+        # Default to hybrid limit if mode invalid
+        limit = size_limits.get(mode, 2 * 1024 * 1024)
+        
+        if file.size > limit:
+            return JsonResponse({
+                "error": f"File too large for {mode} mode. Limit is {limit/1024/1024:.1f}MB."
+            }, status=413)
+
         filename = file.name
-        logger.info(f"[VULNRIX] File: {filename}, Mode: {mode}")
+        logger.info(f"[VULNRIX] File: {filename}, Mode: {mode}, Size: {file.size}")
         ext = os.path.splitext(filename)[1]
 
         # Create temp file

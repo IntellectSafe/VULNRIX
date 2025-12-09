@@ -85,7 +85,8 @@
     <link rel="stylesheet" href="{% static 'css/vulnrix.css' %}">
     
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <!-- Charts.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
     {% block extra_head %}{% endblock %}
@@ -97,7 +98,20 @@
     <header class="topbar">
         <button id="sidebarToggle" class="btn btn--outline btn--sm"><i class="fas fa-bars"></i></button>
         <span class="font-semibold text-lg">VULNRIX</span>
-        <button class="btn btn--sm btn--outline"><i class="fas fa-user"></i></button>
+        
+        <!-- Profile Dropdown -->
+        <div class="relative">
+            <button id="profileDropdownBtn" class="btn btn--sm btn--outline"><i class="fas fa-user"></i></button>
+            <div id="profileDropdown" class="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-lg shadow-xl hidden z-50 overflow-hidden">
+                <div class="p-3 border-b border-border/50 bg-muted/20">
+                    <p class="text-xs text-muted font-medium">Signed in as</p>
+                    <p class="text-sm font-semibold truncate">{{ user.username|default:"User" }}</p>
+                </div>
+                <a href="{% url 'accounts:logout' %}" class="flex items-center gap-2 px-4 py-3 text-sm text-destructive hover:bg-destructive/10 transition-colors">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
     </header>
 
     <!-- Sidebar -->
@@ -107,10 +121,15 @@
             <span style="color: #00d4d4;">VULNRIX</span>
         </a>
         
-        <div class="flex-col gap-4">
-            <div class="sidebar-section">
+        <div class="flex-col gap-4 relative">
+            <!-- Mobile Close Button -->
+            <button id="sidebarClose" class="absolute top-0 right-0 p-2 md:hidden text-muted-foreground hover:text-foreground">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <div class="sidebar-section mt-8 md:mt-0">
                 <div class="sidebar-section-title">Platform</div>
-                <a href="{% url 'scanner:dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <a href="{% url 'scanner:dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' or request.path == '/vuln/' %}active{% endif %}">
                     <i class="fas fa-home w-4"></i> Dashboard
                 </a>
                 <a href="{% url 'scanner:docs' %}" class="sidebar-link {% if 'docs' in request.path %}active{% endif %}">
@@ -133,10 +152,10 @@
                     <span>Dev Tools</span>
                     <span class="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-mono">&lt;/&gt;</span>
                 </div>
-                <a href="{% url 'vuln_scan:dashboard' %}" class="sidebar-link {% if 'vuln' in request.path %}active{% endif %}">
+                <a href="{% url 'vuln_scan:dashboard' %}" class="sidebar-link {% if 'vuln' in request.path and 'virustotal' not in request.path %}active{% endif %}">
                     <i class="fas fa-code w-4"></i> Code & File Scanner
                 </a>
-                <a href="{% url 'vuln_scan:virustotal' %}" class="sidebar-link">
+                <a href="{% url 'vuln_scan:virustotal' %}" class="sidebar-link {% if 'virustotal' in request.path %}active{% endif %}">
                     <i class="fas fa-virus w-4"></i> VirusTotal Engine
                 </a>
             </div>
@@ -184,10 +203,44 @@
 <!-- JS Utilities -->
 <script src="{% static 'js/vulnrix-utils.js' %}"></script>
 <script>
-    // Simple sidebar toggle for mobile
-    document.getElementById('sidebarToggle')?.addEventListener('click', () => {
-        document.getElementById('sidebar').classList.toggle('open');
+    // Sidebar Toggle
+    const sidebar = document.getElementById('sidebar');
+    const toggleBtn = document.getElementById('sidebarToggle');
+    const closeBtn = document.getElementById('sidebarClose');
+
+    toggleBtn?.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
     });
+
+    closeBtn?.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+    });
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', (e) => {
+        if (window.innerWidth <= 1024) {
+            if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target) && sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+            }
+        }
+    });
+
+    // Profile Dropdown
+    const profileBtn = document.getElementById('profileDropdownBtn');
+    const profileMenu = document.getElementById('profileDropdown');
+    
+    if (profileBtn && profileMenu) {
+        profileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            profileMenu.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
+                profileMenu.classList.add('hidden');
+            }
+        });
+    }
 </script>
 {% block scripts %}{% endblock %}
 

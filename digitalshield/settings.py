@@ -35,9 +35,10 @@ ALLOWED_HOSTS = [host for host in ALLOWED_HOSTS if host]
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:5000',
     'http://127.0.0.1:5000',
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
+    'https://vulnrix.onrender.com',
 ]
+if os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
+    CSRF_TRUSTED_ORIGINS.append(f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}")
 
 # Default port for development
 DEFAULT_PORT = 5000
