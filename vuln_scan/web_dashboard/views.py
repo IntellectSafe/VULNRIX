@@ -120,114 +120,99 @@ def dashboard(request):
         return render(request, "vuln_scan/dashboard.html", context)
 
     if request.method == "POST":
-        logger.info("[VULNRIX] Received POST request for scan")
-        file = request.FILES.get("file")
-        mode = request.POST.get("mode", "hybrid")
-        
-        if not file:
-            return JsonResponse({"error": "No file uploaded"}, status=400)
-
-        # Enforce file size limits
-        size_limits = {
-            'fast': 20 * 1024 * 1024,   # 20MB
-            'hybrid': 2 * 1024 * 1024,  # 2MB
-            'deep': 1 * 1024 * 1024     # 1MB
-        }
-        # Default to hybrid limit if mode invalid
-        limit = size_limits.get(mode, 2 * 1024 * 1024)
-        
-        if file.size > limit:
-            return JsonResponse({
-                "error": f"File too large for {mode} mode. Limit is {limit/1024/1024:.1f}MB."
-            }, status=413)
-
-        filename = file.name
-        logger.info(f"[VULNRIX] File: {filename}, Mode: {mode}, Size: {file.size}")
-        ext = os.path.splitext(filename)[1]
-
-        # Create temp file
         tmp_path = None
         try:
+            logger.info("[VULNRIX] Received POST request for scan")
+            file = request.FILES.get("file")
+            mode = request.POST.get("mode", "hybrid")
+            
+            if not file:
+                return JsonResponse({"error": "No file uploaded"}, status=400)
+
+            # Enforce file size limits
+            size_limits = {
+                'fast': 20 * 1024 * 1024,   # 20MB
+                'hybrid': 2 * 1024 * 1024,  # 2MB
+                'deep': 1 * 1024 * 1024     # 1MB
+            }
+            limit = size_limits.get(mode, 2 * 1024 * 1024)
+            
+            if file.size > limit:
+                return JsonResponse({
+                    "error": f"File too large for {mode} mode. Limit is {limit/1024/1024:.1f}MB."
+                }, status=413)
+
+            filename = file.name
+            logger.info(f"[VULNRIX] File: {filename}, Mode: {mode}, Size: {file.size}")
+            ext = os.path.splitext(filename)[1]
+
+            # Create temp file
             with tempfile.NamedTemporaryFile(mode="w", suffix=ext, delete=False, encoding="utf-8") as tmp:
                 code = file.read().decode("utf-8", errors="ignore")
                 tmp.write(code)
                 tmp_path = tmp.name
                 logger.info(f"[VULNRIX] Saved temp file to {tmp_path}")
-        except Exception as e:
-            logger.error(f"[VULNRIX] Read failed: {e}")
-            return JsonResponse({"error": f"Read failed: {e}"}, status=400)
 
-        # Define code file extensions that should NOT go to VirusTotal
-        CODE_EXTENSIONS = {
-            '.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.go', '.php', '.rb',
-            '.c', '.cpp', '.h', '.hpp', '.cs', '.swift', '.kt', '.kts', '.rs',
-            '.sql', '.sh', '.bash', '.ps1', '.yaml', '.yml', '.json', '.xml',
-            '.html', '.htm', '.css', '.scss', '.sass', '.less', '.vue', '.svelte',
-            '.scala', '.groovy', '.pl', '.pm', '.lua', '.r', '.m', '.mm', '.asm',
-            '.vb', '.vbs', '.bat', '.cmd', '.psm1', '.psd1', '.tf', '.hcl',
-            '.dockerfile', '.env', '.ini', '.cfg', '.conf', '.toml', '.properties',
-            '.md', '.txt', '.rst', '.tex'
-        }
-        
-        is_code_file = ext.lower() in CODE_EXTENSIONS
-        
-        try:
-            # Only use VirusTotal for non-code files (executables, binaries, etc.)
+            # Define code file extensions that should NOT go to VirusTotal
+            CODE_EXTENSIONS = {
+                '.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.go', '.php', '.rb',
+                '.c', '.cpp', '.h', '.hpp', '.cs', '.swift', '.kt', '.kts', '.rs',
+                '.sql', '.sh', '.bash', '.ps1', '.yaml', '.yml', '.json', '.xml',
+                '.html', '.htm', '.css', '.scss', '.sass', '.less', '.vue', '.svelte',
+                '.scala', '.groovy', '.pl', '.pm', '.lua', '.r', '.m', '.mm', '.asm',
+                '.vb', '.vbs', '.bat', '.cmd', '.psm1', '.psd1', '.tf', '.hcl',
+                '.dockerfile', '.env', '.ini', '.cfg', '.conf', '.toml', '.properties',
+                '.md', '.txt', '.rst', '.tex'
+            }
+            
+            is_code_file = ext.lower() in CODE_EXTENSIONS
+            
+            # VirusTotal Scan (for non-code)
             vt_result = None
             if not is_code_file:
                 try:
                     vt_result = scan_with_virustotal(tmp_path, filename)
-                    logger.info(f"[VULNRIX] VirusTotal scan completed for non-code file")
+                    logger.info(f"[VULNRIX] VirusTotal scan completed")
                 except Exception as vt_error:
                     logger.warning(f"[VULNRIX] VirusTotal scan failed: {vt_error}")
-            else:
-                logger.info(f"[VULNRIX] Skipping VirusTotal for code file, using C scanners + LLM")
             
-            # Get pipeline for code vulnerability analysis
+            # Code Analysis Pipeline
             pipeline = get_pipeline()
             if pipeline is None:
-                return JsonResponse({
-                    "status": "ERROR",
-                    "error": "Scanner engine not available. Check server logs."
-                }, status=500)
+                raise Exception("Scanner engine unavailable (Import Error)")
             
-            # Run Pipeline with Mode
             logger.info(f"[VULNRIX] Starting pipeline scan...")
             start_time = time.time()
             result = pipeline.scan_file(tmp_path, mode=mode)
             duration = time.time() - start_time
-            logger.info(f"[VULNRIX] Scan completed in {duration:.2f}s")
             
-            # Add metadata
+            # Enrich result
             result["scan_duration"] = round(duration, 2)
             result["filename"] = filename
             result["mode"] = mode
-            
-            # Add VirusTotal results if available
             if vt_result:
                 result["virustotal"] = vt_result
             
-            # Calculate file hash for history
+            # Calculate hash
             with open(tmp_path, 'rb') as f:
                 file_hash = hashlib.sha256(f.read()).hexdigest()
             
-            # Save to scan history
+            # Save history
             save_scan_history(request.user, filename, result, mode, file_hash)
             
             return JsonResponse(result)
+
         except Exception as e:
-            logger.error(f"[VULNRIX] Pipeline failed: {e}")
-            logger.debug(f"[VULNRIX] Traceback: {__import__('traceback').format_exc()}")
-            # Return generic error to users - don't expose internal details
+            logger.error(f"[VULNRIX] Post Error: {e}")
+            logger.debug(f"Traceback: {__import__('traceback').format_exc()}")
             return JsonResponse({
                 "status": "ERROR", 
-                "error": "Scan failed. Please try again or contact support.",
-                "error_code": "SCAN_ERROR"
+                "error": str(e)
             }, status=500)
         finally:
             if tmp_path and os.path.exists(tmp_path):
                 os.unlink(tmp_path)
-                logger.info(f"[VULNRIX] Cleaned up temp file")
+                logger.info(f"[VULNRIX] Temp file cleaned")
 
 
 def scan_with_virustotal(file_path: str, filename: str) -> dict:

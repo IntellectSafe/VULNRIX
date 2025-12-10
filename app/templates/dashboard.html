@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
         new Chart(riskCtx.getContext('2d'), {
             type: 'doughnut',
             data: {
-                labels: ['Low Risk', 'Medium Risk', 'High Risk'],
+                labels: ['Low', 'Medium', 'High'],
                 datasets: [{
                     data: hasData ? [riskData.low, riskData.medium, riskData.high] : [1, 0, 0],
                     backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
