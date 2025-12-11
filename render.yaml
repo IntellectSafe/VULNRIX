@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: vulnrix-scanner
+    runtime: python
+    buildCommand: ./build.sh
+    startCommand: gunicorn digitalshield.wsgi:application --bind 0.0.0.0:$PORT --timeout 120 --workers 2
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DEBUG
+        value: 'false'
+      - key: SECRET_KEY
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: '2'
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

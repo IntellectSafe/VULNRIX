@@ -69,114 +69,132 @@ class SecurityPipeline:
     def scan_file(self, file_path: str, mode: str = "hybrid") -> Dict[str, Any]:
         """
         Run the scanning pipeline on a file.
+        Wraps entire process to ensure robust error handling.
         """
         self.logger.info(f"Scanning file: {file_path} in mode: {mode}")
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                code = f.read()
-            self.logger.info(f"Read {len(code)} bytes")
-        except Exception as e:
-            self.logger.error(f"File read error: {e}")
-            return {"status": "ERROR", "error": str(e)}
+            # File Read
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    code = f.read()
+                self.logger.info(f"Read {len(code)} bytes")
+            except Exception as e:
+                self.logger.error(f"File read error: {e}")
+                return {"status": "ERROR", "error": f"File read error: {str(e)}"}
 
-        # 1. Keyword Filtering (Pre-screen)
-        if mode != 'deep':
-            self.logger.info("Running Keyword Filter...")
-            is_suspicious, categories, risk_score = self.filter.scan(code)
-            self.logger.info(f"Filter result: suspicious={is_suspicious}, score={risk_score}")
+            # 1. Keyword Filtering (Pre-screen)
+            if mode != 'deep':
+                self.logger.info("Running Keyword Filter...")
+                is_suspicious, categories, risk_score = self.filter.scan(code)
+                self.logger.info(f"Filter result: suspicious={is_suspicious}, score={risk_score}")
+                
+                if not is_suspicious and mode != 'fast':
+                    return {
+                        "status": "SAFE",
+                        "reason": "No suspicious patterns found by keyword filter.",
+                        "risk_score": risk_score,
+                        "findings": []
+                    }
+            else:
+                categories = []
+                risk_score = 100 
+
+            # 2. Parsing & Structural Analysis
+            self.logger.info("Running Parser...")
+            structure = self.parser.parse(code, file_path)
             
-            if not is_suspicious and mode != 'fast':
+            # 3. Semantic Analysis
+            self.logger.info("Running Semantic Analysis...")
+            semantic_result = self.semantic.analyze(code, file_path)
+            semantic_findings = semantic_result.get('findings', []) if isinstance(semantic_result, dict) else semantic_result
+            self.logger.info(f"Found {len(semantic_findings)} semantic hints")
+            
+            if mode == 'fast':
+                status = "VULNERABLE" if semantic_findings else "SAFE"
+                # Run AI malicious detection
+                ai_scan = self.ai_detector.run_full_ai_malicious_scan(code)
+                self.logger.info(f"AI scan complete: {ai_scan['risk_level']}")
                 return {
-                    "status": "SAFE",
-                    "reason": "No suspicious patterns found by keyword filter.",
+                    "status": status,
+                    "reason": "Fast scan completed (Local Analysis only).",
                     "risk_score": risk_score,
-                    "findings": []
+                    "findings": semantic_findings,
+                    "semantic_hints": semantic_findings,
+                    "ai_malicious_risk": ai_scan
                 }
-        else:
-            categories = []
-            risk_score = 100 
 
-        # 2. Parsing & Structural Analysis
-        self.logger.info("Running Parser...")
-        structure = self.parser.parse(code, file_path)
-        
-        # 3. Semantic Analysis
-        self.logger.info("Running Semantic Analysis...")
-        semantic_result = self.semantic.analyze(code, file_path)
-        semantic_findings = semantic_result.get('findings', []) if isinstance(semantic_result, dict) else semantic_result
-        self.logger.info(f"Found {len(semantic_findings)} semantic hints")
-        
-        if mode == 'fast':
-            status = "VULNERABLE" if semantic_findings else "SAFE"
+            # 4. Phase 1: Scan Planning (LLM)
+            if not self.phase1_provider:
+                self.logger.warning("No Phase 1 provider available, using local analysis only")
+                status = "VULNERABLE" if semantic_findings else "SAFE"
+                ai_scan = self.ai_detector.run_full_ai_malicious_scan(code)
+                return {
+                    "status": status,
+                    "reason": "Local analysis completed (No LLM provider configured).",
+                    "risk_score": risk_score,
+                    "findings": semantic_findings,
+                    "semantic_hints": semantic_findings,
+                    "categories": categories,
+                    "ai_malicious_risk": ai_scan
+                }
+
+            self.logger.info("Starting Phase 1 (Planning)...")
+            plan = self._run_phase1(code, structure, categories, semantic_findings)
+            
+            # Ensure plan is a dict (Hardening)
+            if not isinstance(plan, dict):
+                self.logger.warning(f"Phase 1 returned non-dict: {type(plan)}")
+                plan = {"risk_level": "UNKNOWN", "error": "Invalid LLM response format"}
+
+            self.logger.info(f"Phase 1 complete. Risk Level: {plan.get('risk_level')}")
+            
+            if plan.get("risk_level") in ["SAFE", "LOW"] and mode != 'deep':
+                ai_scan = self.ai_detector.run_full_ai_malicious_scan(code)
+                return {
+                    "status": "SAFE", 
+                    "plan": plan,
+                    "risk_score": risk_score,
+                    "findings": [],
+                    "ai_malicious_risk": ai_scan
+                }
+
+            # 5. Phase 2: Deep Analysis (LLM)
+            if not self.phase2_provider:
+                self.phase2_provider = self.phase1_provider
+
+            self.logger.info("Starting Phase 2 (Deep Analysis)...")
+            report = self._run_phase2(code, plan, semantic_findings)
+            
+            # Ensure report is a dict
+            if not isinstance(report, dict):
+                report = {"status": "ERROR", "findings": [], "error": "Invalid Phase 2 response"}
+
+            self.logger.info("Phase 2 complete")
+            
             # Run AI malicious detection
             ai_scan = self.ai_detector.run_full_ai_malicious_scan(code)
-            self.logger.info(f"AI scan complete: {ai_scan['risk_level']}")
+            
             return {
-                "status": status,
-                "reason": "Fast scan completed (Local Analysis only).",
-                "risk_score": risk_score,
-                "findings": semantic_findings,
-                "semantic_hints": semantic_findings,
-                "ai_malicious_risk": ai_scan
-            }
-
-        # 4. Phase 1: Scan Planning (LLM)
-        if not self.phase1_provider:
-            self.logger.warning("No Phase 1 provider available, using local analysis only")
-            # Return semantic findings without LLM analysis
-            status = "VULNERABLE" if semantic_findings else "SAFE"
-            # Run AI malicious detection
-            ai_scan = self.ai_detector.run_full_ai_malicious_scan(code)
-            self.logger.info(f"AI scan complete: {ai_scan['risk_level']}")
-            return {
-                "status": status,
-                "reason": "Local analysis completed (No LLM provider configured).",
-                "risk_score": risk_score,
-                "findings": semantic_findings,
-                "semantic_hints": semantic_findings,
-                "categories": categories,
-                "ai_malicious_risk": ai_scan
-            }
-
-        self.logger.info("Starting Phase 1 (Planning)...")
-        plan = self._run_phase1(code, structure, categories, semantic_findings)
-        self.logger.info(f"Phase 1 complete. Risk Level: {plan.get('risk_level')}")
-        
-        if plan.get("risk_level") in ["SAFE", "LOW"] and mode != 'deep':
-            # Run AI malicious detection even on safe code
-            ai_scan = self.ai_detector.run_full_ai_malicious_scan(code)
-            self.logger.info(f"AI scan complete: {ai_scan['risk_level']}")
-            return {
-                "status": "SAFE", 
+                "status": report.get("status", "UNKNOWN"),
+                "findings": report.get("findings", []),
                 "plan": plan,
-                "risk_score": risk_score,
-                "findings": [],
+                "semantic_hints": semantic_findings,
                 "ai_malicious_risk": ai_scan
             }
-
-        # 5. Phase 2: Deep Analysis (LLM)
-        if not self.phase2_provider:
-            self.phase2_provider = self.phase1_provider
-
-        self.logger.info("Starting Phase 2 (Deep Analysis)...")
-        report = self._run_phase2(code, plan, semantic_findings)
-        self.logger.info("Phase 2 complete")
-        
-        # Run AI malicious detection after normal scan
-        ai_scan = self.ai_detector.run_full_ai_malicious_scan(code)
-        self.logger.info(f"AI malicious scan complete: {ai_scan['risk_level']}")
-        
-        return {
-            "status": report.get("status", "UNKNOWN"),
-            "findings": report.get("findings", []),
-            "plan": plan,
-            "semantic_hints": semantic_findings,
-            "ai_malicious_risk": ai_scan
-        }
+            
+        except Exception as e:
+            self.logger.error(f"Pipeline crashed: {e}")
+            import traceback
+            self.logger.debug(traceback.format_exc())
+            return {
+                "status": "ERROR",
+                "error": f"Pipeline execution failed: {str(e)}",
+                "risk_score": 0,
+                "findings": []
+            }
 
     def _run_phase1(self, code: str, structure: Dict, categories: List[str], semantic_findings: List[Dict]) -> Dict:
         """Execute Phase 1: Planning"""
-        # Create a summary context for the LLM
         summary = f"""
         Categories Found: {', '.join(categories)}
         Functions: {len(structure.get('functions', []))}
@@ -184,7 +202,6 @@ class SecurityPipeline:
         Potential Semantic Issues: {len(semantic_findings)}
         """
         
-        # Truncate code for Phase 1 if too large (focus on structure)
         context = f"METADATA:\n{summary}\n\nCODE SUMMARY:\n{code[:8000]}" 
         
         try:
@@ -200,8 +217,6 @@ class SecurityPipeline:
 
     def _run_phase2(self, code: str, plan: Dict, semantic_findings: List[Dict]) -> Dict:
         """Execute Phase 2: Deep Analysis"""
-        
-        # Focus on critical functions identified in Phase 1
         critical_funcs = plan.get("critical_functions", [])
         focus_areas = plan.get("focus_areas", [])
         
@@ -230,10 +245,11 @@ class SecurityPipeline:
 
     def _parse_json_response(self, response: str) -> Dict:
         """Extract and parse JSON from LLM response"""
+        parsed = None
         try:
             # Try standard json first
             import json_repair
-            return json_repair.loads(response)
+            parsed = json_repair.loads(response)
         except Exception:
             try:
                 # Fallback to standard json extraction
@@ -248,9 +264,16 @@ class SecurityPipeline:
                 else:
                     json_str = response.strip()
                     
-                return json.loads(json_str)
+                parsed = json.loads(json_str)
             except Exception as e:
-                # Fallback: return raw text wrapped in dict
-                print(f"[DEBUG] JSON Parse Error: {e}")
-                print(f"[DEBUG] Raw Response: {response[:500]}...") 
+                self.logger.error(f"JSON Parsing failed: {e}")
                 return {"raw_response": response, "error": "Failed to parse JSON"}
+        
+        # Enforce Dict return type
+        if isinstance(parsed, dict):
+            return parsed
+        elif isinstance(parsed, list):
+            return {"data": parsed}
+        else:
+            # String or other primitive
+            return {"parsed_content": str(parsed), "raw_response": response}
