@@ -216,20 +216,29 @@ class SecurityPipeline:
             return {"risk_level": "UNKNOWN", "error": str(e)}
 
     def _run_phase2(self, code: str, plan: Dict, semantic_findings: List[Dict]) -> Dict:
-        """Execute Phase 2: Deep Analysis"""
+        """Execute Phase 2: Deep Analysis (Memory-optimized)"""
         critical_funcs = plan.get("critical_functions", [])
         focus_areas = plan.get("focus_areas", [])
+        
+        # Truncate code to prevent OOM on free tier (max 15KB)
+        max_code_len = 15000
+        truncated_code = code[:max_code_len]
+        if len(code) > max_code_len:
+            truncated_code += f"\n\n... [TRUNCATED - {len(code) - max_code_len} bytes omitted]"
+        
+        # Limit semantic findings to prevent bloat
+        limited_findings = semantic_findings[:20] if len(semantic_findings) > 20 else semantic_findings
         
         context = f"""
         PHASE 1 PLAN:
         Risk Level: {plan.get('risk_level')}
-        Focus Areas: {json.dumps(focus_areas)}
+        Focus Areas: {json.dumps(focus_areas[:10])}
         
-        SEMANTIC HINTS:
-        {json.dumps(semantic_findings)}
+        SEMANTIC HINTS ({len(limited_findings)} of {len(semantic_findings)}):
+        {json.dumps(limited_findings)}
         
-        FULL CODE:
-        {code}
+        CODE (truncated to {len(truncated_code)} chars):
+        {truncated_code}
         """
         
         try:
@@ -241,7 +250,7 @@ class SecurityPipeline:
             return self._parse_json_response(response)
         except Exception as e:
             self.logger.error(f"Phase 2 failed: {e}")
-            return {"status": "ERROR", "error": str(e)}
+            return {"status": "ERROR", "error": str(e), "findings": []}
 
     def _parse_json_response(self, response: str) -> Dict:
         """Extract and parse JSON from LLM response"""

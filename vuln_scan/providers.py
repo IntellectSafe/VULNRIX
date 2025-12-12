@@ -102,7 +102,7 @@ class GeminiProvider(LLMProvider):
                     f"{url}?key={self.api_key}",
                     json=payload,
                     headers={"Content-Type": "application/json"},
-                    timeout=60
+                    timeout=30
                 )
                 
                 if resp.status_code == 200:
