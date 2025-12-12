@@ -1,72 +1,96 @@
-VULNRIX 🛡️
-All-in-one security platform for digital footprint analysis and code vulnerability scanning.
-Live Demo: https://vulnrix.onrender.com
-Features
-🔍 Digital Footprint Scanner
-Email: Breach checking & monitoring
-Phone: Carrier lookup, validation
-Domain/IP: WHOIS, DNS, port scanning
-Username: Social media enumeration
-Darkweb mentions
-Quick Lookup: Scan single items instantly
-🛡️ Code/File Vulnerability Scanner
-Multi-mode: Fast, Hybrid, or Deep AI analysis
-Detections: SQLi, XSS, command injection, secrets
-VirusTotal Integration: Malware scanning
-AI Malicious Detection: Detects GPT-generated malware patterns
-Quick Start
-# Clone repository
-git clone https://github.com/HOLYKEYZ/VULNRIX.git
+# VULNRIX 🛡️
+
+**All-in-one security platform(OSINT)** for digital footprint analysis & code vulnerability scanning.
+
+---
+
+## Features
+
+### 🔍 Digital Footprint Scanner
+- **Email** – Breach checking, 
+- **Dark Web** mentions , monitoring
+- **Phone** – Carrier lookup, validation
+- **Domain/IP** – WHOIS, DNS, port scanning
+- **Username/name** – Social media and webseach enumeration
+- **Quick Lookup** – Scan single items fast
+
+### 🛡️ Code/File Vulnerability Scanner
+- **Multi-mode** – Fast, Hybrid, or Deep AI analysis
+- **Detections** – SQLi, XSS, command injection, secrets
+- **VirusTotal** – file Malware scanning integration
+- **AI Malicious Detection** – Detects Code-generated malware patterns
+
+---
+
+## Quick Start
+
+```bash
+# Clone and setup
+git clone <https://github.com/HOLYKEYZ/VULNRIX.git>
 cd VULNRIX
-# Create virtual environment
+
 python -m venv .venv
 .venv\Scripts\activate  # Windows
 # source .venv/bin/activate  # Linux/Mac
-# Install dependencies
+
 pip install -r requirements.txt
-# Add your API keys
-cp .env.example .env
-# Run migrations
+cp .env.example .env  # Add your API keys
+
 python manage.py migrate
-# Start development server
 python manage.py runserver
-Required API Keys
-INTELX_API_KEY=          # Core OSINT scanning
+```
+
+---
+
+## API Keys Required
+
+```env
+# Core (Pick the ones you have)
+INTELX_API_KEY=          # Primary OSINT
 VIRUS_TOTAL_API_KEY=     # Malware scanning
 LEAKINSIGHT_API_KEY=     # Breach checking
 GROQ_KEY=                # AI scanning
-Optional
+
+# Optional
 SHODAN_API_KEY=
 GOOGLE_API_KEY=
 SECURITY_TRAILS_API_KEY=
-Project Structure
+```
+
+---
+
+## Project Structure
+
+```
 VULNRIX/
-├── scanner/             # Digital footprint scanner
-├── vuln_scan/           # Code vulnerability scanner
-├── accounts/            # Authentication
+├── scanner/           # Footprint scanner
+├── vuln_scan/         # Code vulnerability scanner
+├── accounts/          # Authentication
 ├── c_fallback_modules/  # C performance fallbacks
-└── app/templates/       # UI templates
-Deployment
-Set these for production (Environment Variables):
-| Variable | Value |
-| :--- | :--- |
-| DEBUG | False |
-| SECRET_KEY | <long-random-key> |
-| ALLOWED_HOSTS | vulnrix.onrender.com |
-| DATABASE_URL | postgres://... (from Supabase/Neon) |
-| PYTHONUNBUFFERED | true |
-| DJANGO_SETTINGS_MODULE | digitalshield.settings |
-### Database Setup (Supabase/Neon)
-1. Create a free database on [Supabase](https://supabase.com) or [Neon](https://neon.tech).
-2. Copy the **Connection String** (Transaction Mode / port 6543 or 5432).
-3. Add it as DATABASE_URL in Render.
-### Render Build Command
-bash
-pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+└── app/templates/     # UI templates
+```
 
-### Render Start Command
-bash
+---
+
+## Deployment
+
+Set these for production:
+```bash
+DEBUG=False
+SECRET_KEY=<long-random-key>
+ALLOWED_HOSTS=your-domain.com
+```
+
+Then:
+```bash
+python manage.py collectstatic
 gunicorn digitalshield.wsgi:application
+```
 
-License
-GPLv2 – GNU GENERAL PUBLIC LICENSE Version 2
+---
+
+## License
+
+GPLv2
+GNU GENERAL PUBLIC LICENSE
+                       Version 2 License
