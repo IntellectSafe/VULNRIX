@@ -306,13 +306,19 @@ window.startScan = async () => {
             headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
         });
         
+        // Detect session expiry (login redirect)
+        if (res.redirected || res.url.includes('/login') || res.url.includes('/accounts/')) {
+            throw new Error("Session expired. Please refresh the page and log in again.");
+        }
+        
         // Handle non-JSON responses (like 403 CSRF HTML or 500 Server Error pages)
         const contentType = res.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
             if (res.status === 403) throw new Error("Security Token Invalid (CSRF). Please refresh the page.");
             if (res.status === 502) throw new Error("Server Timeout. The scan took too long.");
             if (res.status === 413) throw new Error("File too large.");
-            throw new Error(`Server returned ${res.status} (Not JSON). Check API keys.`);
+            if (res.status === 200) throw new Error("Session expired. Please refresh and log in again.");
+            throw new Error(`Server returned ${res.status} (Not JSON). Check server logs.`);
         }
 
         const data = await res.json();
