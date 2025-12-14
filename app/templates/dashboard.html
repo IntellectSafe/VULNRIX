@@ -247,170 +247,194 @@ document.addEventListener('DOMContentLoaded', function() {
     // Data from Django - using JSON script tags for proper parsing
     var riskData = {
         low: parseInt('{{ risk_distribution.low|default:0 }}') || 0,
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ===== CHART.JS INITIALIZATION =====
+    
+    // Check if Chart.js is loaded
+    if (typeof Chart === 'undefined') {
+        console.error('[VULNRIX] Chart.js library not loaded!');
+        return;
+    }
+
+    // Risk Distribution Data
+    var riskData = {
+        low: parseInt('{{ risk_distribution.low|default:0 }}') || 0,
         medium: parseInt('{{ risk_distribution.medium|default:0 }}') || 0,
         high: parseInt('{{ risk_distribution.high|default:0 }}') || 0
     };
     
     // Risk Distribution Doughnut Chart
-    var riskCtx = document.getElementById('riskChart');
-    if (riskCtx && typeof Chart !== 'undefined') {
+    var riskCanvas = document.getElementById('riskChart');
+    if (riskCanvas) {
         var hasData = riskData.low > 0 || riskData.medium > 0 || riskData.high > 0;
-        new Chart(riskCtx.getContext('2d'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Low', 'Medium', 'High'],
-                datasets: [{
-                    data: hasData ? [riskData.low, riskData.medium, riskData.high] : [1, 0, 0],
-                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
-                    borderColor: ['#0a0a0f', '#0a0a0f', '#0a0a0f'],
-                    borderWidth: 3,
-                    hoverOffset: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '65%',
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { 
-                            color: '#ffffff', // Force White
-                            padding: 10, 
-                            font: { size: 10, family: "'JetBrains Mono', monospace" }, 
-                            usePointStyle: true,
-                            boxWidth: 8
+        try {
+            new Chart(riskCanvas.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Low', 'Medium', 'High'],
+                    datasets: [{
+                        data: hasData ? [riskData.low, riskData.medium, riskData.high] : [0, 0, 1], // Default to empty state if no data
+                        backgroundColor: hasData ? ['#10b981', '#f59e0b', '#ef4444'] : ['#2a2a35', '#2a2a35', '#2a2a35'], // Dark grey for empty
+                        borderColor: '#0a0a0f',
+                        borderWidth: 3,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { 
+                                color: '#ffffff', // Force White
+                                padding: 15, 
+                                font: { size: 11, family: "'JetBrains Mono', monospace" }, 
+                                usePointStyle: true,
+                                boxWidth: 8
+                            }
+                        },
+                        tooltip: {
+                            enabled: hasData, // Disable tooltip if no data
+                            backgroundColor: '#1a1a24',
+                            titleColor: '#00d4d4',
+                            bodyColor: '#ffffff',
+                            borderColor: '#2a2a3a',
+                            borderWidth: 1
                         }
-                    },
-                    tooltip: {
-                        backgroundColor: '#1a1a24', // Surface color
-                        titleColor: '#00d4d4', // Teal title
-                        bodyColor: '#ffffff', // White body
-                        borderColor: '#2a2a3a',
-                        borderWidth: 1
                     }
                 }
-            }
-        });
-    }
-            }
-        });
+            });
+        } catch (e) { console.error('[VULNRIX] Risk chart render error:', e); }
     }
     
-    // Scan Trends Line Chart - Use real Django data only
-    var trendsCtx = document.getElementById('trendsChart');
-    if (trendsCtx && typeof Chart !== 'undefined') {
+    // Scan Trends Line Chart
+    var trendsCanvas = document.getElementById('trendsChart');
+    if (trendsCanvas) {
         var labels = [];
         var data = [];
         
-        // Parse real trends data from Django - no fallbacks
+        // Parse real trends data from Django
         {% if exposure_trends %}
         try {
             var trendsRaw = {{ exposure_trends|safe }};
-            if (trendsRaw && trendsRaw.length > 0) {
+            if (trendsRaw && Array.isArray(trendsRaw) && trendsRaw.length > 0) {
                 // Use last 7 entries for display
                 var recentTrends = trendsRaw.slice(-7);
                 labels = recentTrends.map(function(d) { 
                     if (d.date) {
                         var parts = d.date.split('-');
-                        return parts[1] + '/' + parts[2];
+                        return parts.length > 2 ? parts[1] + '/' + parts[2] : d.date;
                     }
                     return '';
                 });
                 data = recentTrends.map(function(d) { return d.count || 0; });
             }
-        } catch(e) { console.log('Trends parse error:', e); }
+        } catch(e) { console.error('[VULNRIX] Trends data parse error:', e); }
         {% endif %}
         
-        new Chart(trendsCtx.getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Scans',
-                    data: data,
-                    borderColor: '#00d4d4',
-                    backgroundColor: 'rgba(0, 212, 212, 0.1)',
-                    borderWidth: 2,
-                    tension: 0.4,
-                    fill: true,
-                    pointBackgroundColor: '#00d4d4',
-                    pointBorderColor: '#0a0a0f',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
+        // If no data, show empty state
+        if (data.length === 0) {
+            labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            data = [0, 0, 0, 0, 0, 0, 0];
+        }
+
+        try {
+            new Chart(trendsCanvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Scans',
+                        data: data,
+                        borderColor: '#00d4d4',
+                        backgroundColor: 'rgba(0, 212, 212, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#00d4d4',
+                        pointBorderColor: '#0a0a0f',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { color: '#666', stepSize: 1 },
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: '#1a1a24',
+                            titleColor: '#00d4d4',
+                            bodyColor: '#ffffff',
+                            borderColor: '#2a2a3a',
+                            borderWidth: 1
+                        }
                     },
-                    x: {
-                        ticks: { color: '#666', font: { size: 10 } },
-                        grid: { display: false }
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#9ca3af', stepSize: 1, font: { size: 10 } },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            border: { display: false }
+                        },
+                        x: {
+                            ticks: { color: '#9ca3af', font: { size: 10 } },
+                            grid: { display: false },
+                            border: { display: false }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
                     }
                 }
-            }
-        });
+            });
+        } catch (e) { console.error('[VULNRIX] Trends chart render error:', e); }
     }
     
     // ===== LIVE UPDATE POLLING =====
-    // Store chart instances for updates
-    var trendsChartInstance = null;
-    var riskChartInstance = null;
-    
-    // Re-save chart instances (they're created above but not accessible)
-    // We'll recreate them in the update function if needed
-    
     function refreshDashboardStats() {
         fetch('/api/stats/')
-            .then(function(res) { return res.json(); })
+            .then(function(res) { 
+                if (!res.ok) throw new Error('API response not ok');
+                return res.json(); 
+            })
             .then(function(data) {
-                // Update chart data if trends chart exists
-                if (data.exposure_trends && data.exposure_trends.length > 0) {
-                    var labels = data.exposure_trends.map(function(d) { return d.label; });
-                    var counts = data.exposure_trends.map(function(d) { return d.count; });
-                    
-                    // Update the trends chart by finding the canvas and getting chart from it
-                    var trendsCanvas = document.getElementById('trendsChart');
-                    if (trendsCanvas && Chart.getChart(trendsCanvas)) {
-                        var chart = Chart.getChart(trendsCanvas);
-                        chart.data.labels = labels;
-                        chart.data.datasets[0].data = counts;
-                        chart.update('none');
-                    }
+                // Update trends chart
+                var trendsChart = Chart.getChart('trendsChart');
+                if (trendsChart && data.exposure_trends && data.exposure_trends.length > 0) {
+                    trendsChart.data.labels = data.exposure_trends.map(function(d) { return d.label; });
+                    trendsChart.data.datasets[0].data = data.exposure_trends.map(function(d) { return d.count; });
+                    trendsChart.update('none');
                 }
                 
-                // Flash LIVE badge to indicate update
+                // Flash LIVE badge
                 var liveBadge = document.querySelector('.badge--secondary');
                 if (liveBadge) {
                     liveBadge.classList.add('animate-pulse');
                     setTimeout(function() { liveBadge.classList.remove('animate-pulse'); }, 1000);
                 }
-                
-                console.log('[VULNRIX] Dashboard stats refreshed', new Date().toLocaleTimeString());
             })
             .catch(function(err) {
-                console.log('[VULNRIX] Stats refresh error:', err);
+                // Silently fail on network errors in dev environment to avoid console spam
+                // console.log('[VULNRIX] Stats refresh error:', err);
             });
     }
     
     // Poll every 30 seconds for live updates
     setInterval(refreshDashboardStats, 30000);
     
-    // Also refresh on page visibility change (when user returns to tab)
+    // Refresh on visibility change
     document.addEventListener('visibilitychange', function() {
-        if (!document.hidden) {
-            refreshDashboardStats();
-        }
+        if (!document.hidden) refreshDashboardStats();
     });
 });
 </script>
