@@ -197,8 +197,9 @@ p { margin: 0; }
 
 /* Global Text Visibility Override */
 /* Global Text Visibility Override - NUCLEAR OPTION */
-body, p, span, div, li, td, th, input, button, a, label {
+body, p, span, div, li, td, th, input, button, a, label, h1, h2, h3, h4, h5, h6 {
     color: #ffffff !important;
+    opacity: 1 !important; /* Force opacity to 100% */
 }
 
 /* Brand Headings */
@@ -207,11 +208,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Exceptions for specific UI elements that might need different colors */
-.text-muted {
+.text-muted, .text-gray-500, .text-zinc-500, .text-slate-500, .text-gray-400 {
     color: #d1d5db !important; /* Light Gray */
+    opacity: 1 !important;
 }
 .text-muted-foreground {
     color: #d1d5db !important;
+    opacity: 1 !important;
 }
 .text-primary {
     color: #00d4d4 !important;
