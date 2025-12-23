@@ -135,6 +135,97 @@
                     <!-- Cards injected via JS -->
                 </div>
             </div>
+            
+            <!-- Repo Scan View (Hidden by default) -->
+            <div id="view-repo" class="hidden animate-in fade-in slide-in-from-top-2">
+                <div class="card p-8 text-center space-y-6">
+                    <div class="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                        <i class="fab fa-github text-3xl text-primary"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold">Scan Repository or ZIP</h2>
+                    <p class="text-muted max-w-lg mx-auto">
+                        Enter a public GitHub/GitLab URL. We'll clone it, scan all supported code files, and provide a comprehensive security analysis.
+                    </p>
+                    
+                    <div class="flex gap-2 max-w-lg mx-auto">
+                        <input type="url" id="repoUrl" placeholder="https://github.com/username/repo.git" 
+                               class="flex-1 bg-background border border-border rounded-md px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-foreground">
+                        <button onclick="startRepoScan()" class="btn btn--primary px-6">
+                            <i class="fas fa-search mr-2"></i> Scan
+                        </button>
+                    </div>
+                    
+                    <!-- ZIP Upload Option -->
+                    <div class="text-muted text-sm">or</div>
+                    <div class="border-2 border-dashed border-border hover:border-primary/50 transition-colors rounded-lg p-6 cursor-pointer max-w-lg mx-auto" id="zipDropZone">
+                        <input type="file" id="zipInput" class="hidden" accept=".zip">
+                        <i class="fas fa-file-archive text-2xl text-primary mb-2"></i>
+                        <p class="text-sm text-muted-foreground">Drop a ZIP file here</p>
+                    </div>
+                    
+                    <div id="projectProgress" class="hidden mt-8 max-w-lg mx-auto text-left">
+                        <div class="flex justify-between text-xs uppercase tracking-wider text-muted mb-2">
+                            <span>Scanning Project...</span>
+                            <span id="progressText">0/0 files</span>
+                        </div>
+                        <div class="h-2 bg-muted/30 rounded-full overflow-hidden">
+                            <div id="progressBar" class="h-full bg-primary transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div id="scanLogs" class="mt-4 h-32 overflow-y-auto font-mono text-xs text-muted-foreground bg-black/30 p-2 rounded border border-white/5 space-y-1 custom-scrollbar"></div>
+                    </div>
+                </div>
+                
+                <!-- Inline Repo Results Area (shown after scan completes) -->
+                <div id="repoResultsArea" class="hidden mt-6 space-y-6">
+                    <!-- Summary Stats -->
+                    <div class="card p-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-semibold flex items-center gap-2">
+                                <i class="fas fa-chart-bar text-primary"></i> Scan Summary
+                            </h3>
+                            <span id="repoResultName" class="text-xs text-muted font-mono truncate max-w-[200px]"></span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 text-center">
+                            <div class="p-3 rounded bg-muted/30">
+                                <div class="text-xs text-muted uppercase">Files</div>
+                                <div id="repoResultFiles" class="text-2xl font-bold text-foreground">0</div>
+                            </div>
+                            <div class="p-3 rounded bg-muted/30">
+                                <div class="text-xs text-muted uppercase">Risk Score</div>
+                                <div id="repoResultScore" class="text-2xl font-bold text-primary">0</div>
+                            </div>
+                            <div class="p-3 rounded bg-muted/30">
+                                <div class="text-xs text-muted uppercase">Status</div>
+                                <div id="repoResultStatus" class="text-xl font-bold text-green-500">SAFE</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- File Results List -->
+                    <div class="card">
+                        <div class="flex items-center justify-between p-4 border-b border-border/50">
+                            <h4 class="font-semibold text-sm">Scanned Files</h4>
+                            <button onclick="toggleRepoDetails()" class="text-xs text-primary hover:underline">View All</button>
+                        </div>
+                        <div id="repoFilesList" class="divide-y divide-border/30 max-h-[400px] overflow-y-auto custom-scrollbar">
+                            <!-- File entries injected by JS -->
+                        </div>
+                    </div>
+                    
+                    <!-- File Detail View (shown when clicking a file) -->
+                    <div id="repoFileDetailView" class="hidden card p-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 id="repoFileDetailName" class="font-semibold text-sm font-mono"></h4>
+                            <button onclick="hideRepoFileDetail()" class="text-xs text-muted hover:text-foreground">
+                                <i class="fas fa-arrow-left mr-1"></i> Back to Files
+                            </button>
+                        </div>
+                        <div id="repoFileDetailFindings" class="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar">
+                            <!-- Detailed findings injected by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Right Sidebar: History -->
@@ -165,6 +256,40 @@
                         <div class="flex items-center justify-between text-xs text-muted">
                             <span>{{ scan.created_at|date:"M d, H:i" }}</span>
                             <span>{{ scan.total_findings }} issues</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Project/Repo Scan History -->
+            {% if project_history %}
+            <div class="card h-fit sticky top-6 mt-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold flex items-center gap-2">
+                        <i class="fab fa-github text-muted"></i> Repo Scans
+                    </h3>
+                </div>
+                <div class="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    {% for project in project_history %}
+                    <div onclick="loadProjectResult({{ project.id }})" 
+                         class="group p-3 rounded-lg border border-transparent hover:border-border hover:bg-muted/50 transition-all cursor-pointer">
+                        <div class="flex items-start justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-folder text-xs text-muted"></i>
+                                <span class="font-medium text-sm truncate max-w-[120px]">{{ project.name }}</span>
+                            </div>
+                            <span class="badge text-[10px] px-1.5 py-0.5 
+                                {% if project.status == 'COMPLETED' %}bg-green-500/10 text-green-500
+                                {% elif project.status == 'ERROR' %}bg-red-500/10 text-red-500
+                                {% else %}bg-yellow-500/10 text-yellow-500{% endif %}">
+                                {{ project.status }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between text-xs text-muted">
+                            <span>{{ project.created_at|date:"M d, H:i" }}</span>
+                            <span>{{ project.total_files }} files</span>
                         </div>
                     </div>
                     {% endfor %}
@@ -579,4 +704,364 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 {% endif %}
 </script>
+    
+    <!-- Tab Switcher (Injecting before Main Scanner) -->
+    <script>
+        // Inject Tabs
+        const header = document.querySelector('.container .flex.flex-col');
+        const mainScanner = document.querySelector('.lg\\:col-span-2 > div:first-child'); 
+        if(mainScanner) mainScanner.id = 'view-single';
+        
+        // Add tab buttons to header if not present
+        if (!document.getElementById('scan-tabs')) {
+            const tabsHtml = `
+            <div id="scan-tabs" class="flex gap-4 mb-4 border-b border-border/50 pb-1">
+                <button onclick="switchView('single')" id="tab-single" class="px-4 py-2 text-sm font-medium border-b-2 border-primary text-primary transition-colors">
+                    <i class="fas fa-file-code mr-2"></i> Single File
+                </button>
+                <button onclick="switchView('repo')" id="tab-repo" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-colors">
+                    <i class="fab fa-github mr-2"></i> Repo / Zip
+                </button>
+            </div>`;
+            const container = document.querySelector('.lg\\:col-span-2');
+            if(container) container.insertAdjacentHTML('afterbegin', tabsHtml);
+        }
+        
+        function switchView(mode) {
+            document.getElementById('view-single').classList.toggle('hidden', mode !== 'single');
+            document.getElementById('view-repo').classList.toggle('hidden', mode !== 'repo');
+            
+            document.getElementById('tab-single').className = mode === 'single' ? 'px-4 py-2 text-sm font-medium border-b-2 border-primary text-primary transition-colors' : 'px-4 py-2 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-colors';
+            document.getElementById('tab-repo').className = mode === 'repo' ? 'px-4 py-2 text-sm font-medium border-b-2 border-primary text-primary transition-colors' : 'px-4 py-2 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-colors';
+        }
+    </script>
+
+    <!-- Project Analysis Modal -->
+    <div id="projectModal" class="fixed inset-0 bg-black/80 z-[9999] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="card w-full max-w-3xl p-6 relative animate-in zoom-in-95 duration-200 border border-white/10 bg-[#050b14]">
+            <button onclick="document.getElementById('projectModal').classList.add('hidden')" class="absolute top-4 right-4 text-muted-foreground hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="mb-6">
+                <h3 class="text-xl font-bold flex items-center gap-2 text-foreground">
+                    <i class="fas fa-project-diagram text-primary"></i> Project Analysis
+                </h3>
+                <div id="projectModalName" class="text-sm text-muted-foreground font-mono mt-1"></div>
+            </div>
+    
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="p-3 rounded bg-white/5 border border-white/10 col-span-1">
+                    <div class="text-xs text-muted-foreground">Risk Score</div>
+                    <div id="projectModalScore" class="text-2xl font-bold text-primary">0</div>
+                </div>
+                <div class="p-3 rounded bg-white/5 border border-white/10 col-span-1">
+                    <div class="text-xs text-muted-foreground">Files</div>
+                    <div id="projectModalFiles" class="text-2xl font-bold text-foreground">0</div>
+                </div>
+                <div class="p-3 rounded bg-white/5 border border-white/10 col-span-2">
+                    <div class="text-xs text-muted-foreground">Status</div>
+                    <div id="projectModalStatus" class="text-xl font-bold text-foreground">UNK</div>
+                </div>
+            </div>
+    
+            <h4 class="font-semibold text-sm mb-2 text-muted-foreground">Vulnerabilities Found:</h4>
+            <div class="border border-white/10 rounded-md overflow-hidden bg-black/20 max-h-[300px] overflow-y-auto mb-6 custom-scrollbar">
+                 <table class="w-full text-left text-sm">
+                    <thead class="bg-white/5 text-muted-foreground font-mono text-xs sticky top-0 backdrop-blur-md">
+                        <tr>
+                            <th class="p-2">File</th>
+                            <th class="p-2">Severity</th>
+                            <th class="p-2 text-right">Risk</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projectModalTableBody" class="divide-y divide-white/10">
+                        <!-- JS Injected -->
+                    </tbody>
+                 </table>
+            </div>
+    
+            <!-- Detailed Findings Container (shown when clicking a file) -->
+            <div id="projectFindingsContainer" class="hidden space-y-4 mb-6 max-h-[400px] overflow-y-auto custom-scrollbar">
+                <!-- Detailed findings cards injected here by JS -->
+            </div>
+
+            <div class="flex justify-end gap-2">
+                 <button onclick="window.location.reload()" class="btn btn--primary">Done & Refresh</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ORCHESTRATION LOGIC (Restored & Fixed) -->
+    <script>
+    const scanLogs = document.getElementById('scanLogs');
+    const projectProgress = document.getElementById('projectProgress');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    
+    function addLog(msg, type='info') {
+        const div = document.createElement('div');
+        div.className = `mb-1 ${type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-muted')}`;
+        div.innerHTML = `<span class="opacity-50">${new Date().toLocaleTimeString()}</span> ${msg}`;
+        scanLogs.appendChild(div);
+        scanLogs.scrollTop = scanLogs.scrollHeight;
+    }
+
+    // *** CRITICAL: Defined BEFORE usages ***
+    let currentProjectId = null;
+    let currentProjectData = null;
+    
+    const onProjectScanComplete = (projectId) => {
+        projectProgress.classList.add('hidden');
+        addLog(`Analysis Completed for Project #${projectId}`, 'success');
+        
+        // Fetch Status
+        fetch(`/vuln/project/${projectId}/status/`)
+            .then(res => res.json())
+            .then(data => {
+                currentProjectId = projectId;
+                currentProjectData = data;
+                
+                // Show inline results area
+                const resultsArea = document.getElementById('repoResultsArea');
+                resultsArea.classList.remove('hidden');
+                
+                // Populate summary stats
+                document.getElementById('repoResultName').textContent = data.repo_url || data.project_name || `Project #${projectId}`;
+                document.getElementById('repoResultFiles').textContent = data.total || 0;
+                document.getElementById('repoResultScore').textContent = data.risk_score || 0;
+                
+                const statusEl = document.getElementById('repoResultStatus');
+                statusEl.textContent = data.status || 'UNKNOWN';
+                statusEl.className = data.status === 'COMPLETED' ? 'text-xl font-bold text-green-500' : 'text-xl font-bold text-yellow-500';
+                
+                // Populate file list
+                const filesList = document.getElementById('repoFilesList');
+                filesList.innerHTML = '';
+                
+                if(data.findings && data.findings.length > 0) {
+                    data.findings.forEach(f => {
+                        const div = document.createElement('div');
+                        div.className = 'flex items-center justify-between p-3 hover:bg-muted/30 cursor-pointer transition-colors';
+                        const sevClass = f.severity === 'HIGH' ? 'text-red-500' : (f.severity === 'MEDIUM' ? 'text-yellow-500' : 'text-green-500');
+                        div.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-file-code text-muted text-xs"></i>
+                                <span class="font-mono text-sm truncate max-w-[200px]" title="${f.filename}">${f.filename}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium ${sevClass}">${f.severity}</span>
+                                <span class="text-xs text-muted">${f.risk_score}</span>
+                                <i class="fas fa-chevron-right text-xs text-muted"></i>
+                            </div>
+                        `;
+                        div.onclick = () => showInlineFileDetails(projectId, f.file_id, f.filename);
+                        filesList.appendChild(div);
+                    });
+                } else {
+                    filesList.innerHTML = '<div class="p-4 text-center text-muted">No files scanned or all files are safe.</div>';
+                }
+            });
+    };
+    
+    function showFileDetails(projectId, fileId, filename) {
+        fetch(`/vuln/project/${projectId}/file/${fileId}/`)
+            .then(res => res.json())
+            .then(data => {
+                // Hide file list, show detailed findings
+                document.querySelector('#projectModal h4').textContent = `Vulnerabilities in: ${filename}`;
+                const container = document.getElementById('projectFindingsContainer');
+                container.innerHTML = '';
+                
+                if(data.findings && data.findings.length > 0) {
+                    data.findings.forEach(finding => {
+                        const card = document.createElement('div');
+                        const sev = (finding.severity || 'info').toLowerCase();
+                        card.className = 'card p-4 border-l-4 mb-3 ' + 
+                            (sev === 'critical' || sev === 'high' ? 'border-red-500' : 
+                             sev === 'medium' ? 'border-yellow-500' : 'border-blue-500');
+                        
+                        // Get line and code from location object
+                        const line = finding.location?.line || finding.line;
+                        const code = finding.location?.code || finding.code || '';
+                        
+                        card.innerHTML = `
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-mono px-2 py-1 rounded ${
+                                        sev === 'critical' || sev === 'high' ? 'bg-red-500/20 text-red-400' :
+                                        sev === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                        'bg-blue-500/20 text-blue-400'
+                                    }">${finding.severity || 'INFO'}</span>
+                                    <span class="text-xs font-medium text-foreground">${finding.type || ''}</span>
+                                </div>
+                                ${line ? `<span class="text-xs text-muted">Line ${line}</span>` : ''}
+                            </div>
+                            <p class="text-sm text-foreground mb-2">${finding.reason || finding.description || finding.message || 'Security issue detected'}</p>
+                            ${finding.cwe ? `<p class="text-xs text-muted mb-2"><i class="fas fa-link mr-1"></i>${finding.cwe}</p>` : ''}
+                            ${code ? `<pre class="text-xs bg-black/30 p-2 rounded overflow-x-auto mb-2"><code>${code}</code></pre>` : ''}
+                            ${finding.recommendation ? `<p class="text-xs text-green-400"><i class="fas fa-lightbulb mr-1"></i>${finding.recommendation}</p>` : ''}
+                        `;
+                        container.appendChild(card);
+                    });
+                } else {
+                    container.innerHTML = '<p class="text-muted text-center">No detailed findings available.</p>';
+                }
+                
+                // Show back button
+                document.getElementById('projectModalTableBody').parentElement.parentElement.classList.add('hidden');
+                container.classList.remove('hidden');
+                document.querySelector('#projectModal .btn--primary').textContent = 'Back to Files';
+                document.querySelector('#projectModal .btn--primary').onclick = () => {
+                    document.getElementById('projectModalTableBody').parentElement.parentElement.classList.remove('hidden');
+                    container.classList.add('hidden');
+                    document.querySelector('#projectModal h4').textContent = 'Vulnerabilities Found:';
+                    document.querySelector('#projectModal .btn--primary').textContent = 'Done & Refresh';
+                    document.querySelector('#projectModal .btn--primary').onclick = () => window.location.reload();
+                };
+            });
+    }
+
+    const orchestrateProjectScan = async (projectId, totalFiles) => {
+        projectProgress.classList.remove('hidden');
+        scanLogs.innerHTML = '';
+        let processed = 0;
+        
+        addLog(`Starting scan logic for Project #${projectId}...`, 'info');
+        
+        const loop = async () => {
+            try {
+                const res = await fetch(`/vuln/project/${projectId}/scan-file/`, {
+                    method: 'POST',
+                    headers: {'X-CSRFToken': '{{ csrf_token }}'}
+                });
+                if(!res.ok) throw new Error("Network Error");
+                const data = await res.json();
+                
+                if(data.status === 'COMPLETED') {
+                     progressBar.style.width = '100%';
+                     progressText.textContent = 'Completed';
+                     onProjectScanComplete(projectId);
+                     return;
+                }
+                
+                if(data.status === 'PROCESSED') {
+                    processed++;
+                    const pct = Math.round((processed/totalFiles)*100);
+                    progressBar.style.width = `${pct}%`;
+                    progressText.textContent = `${processed}/${totalFiles}`;
+                    addLog(`[${data.severity}] ${data.filename}`, 'info');
+                    loop(); // Recursive next
+                    return;
+                }
+                
+                if(data.status === 'WAITING' || data.status === 'ERROR') {
+                    if(data.status ==='ERROR') addLog(`Error: ${data.filename}`, 'error');
+                    setTimeout(loop, 1000);
+                    return;
+                }
+                
+            } catch(e) {
+                addLog(`Retry: ${e.message}`, 'error');
+                setTimeout(loop, 2000);
+            }
+        };
+        loop();
+    };
+
+    window.startRepoScan = async () => {
+        const url = document.getElementById('repoUrl').value;
+        if(!url) return alert("Enter URL");
+        
+        try {
+            const formData = new FormData();
+            formData.append('repo_url', url);
+            
+            addLog("Cloning repository...", "info");
+            projectProgress.classList.remove('hidden');
+            
+            const res = await fetch('/vuln/scan/repo/', {
+                method: 'POST',
+                body: formData,
+                headers: {'X-CSRFToken': '{{ csrf_token }}'}
+            });
+            const data = await res.json();
+            
+            if(!res.ok) throw new Error(data.error);
+            
+            orchestrateProjectScan(data.project_id, data.total_files);
+            
+        } catch(e) {
+            alert("Scan Failed: " + e.message);
+            projectProgress.classList.add('hidden');
+        }
+    };
+    
+    // Load project result from history
+    window.loadProjectResult = function(projectId) {
+        // Switch to repo tab first
+        if(typeof switchView === 'function') switchView('repo');
+        onProjectScanComplete(projectId);
+    };
+    
+    // Show inline file details
+    function showInlineFileDetails(projectId, fileId, filename) {
+        fetch(`/vuln/project/${projectId}/file/${fileId}/`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('repoFileDetailName').textContent = filename;
+                const container = document.getElementById('repoFileDetailFindings');
+                container.innerHTML = '';
+                
+                if(data.findings && data.findings.length > 0) {
+                    data.findings.forEach(finding => {
+                        const card = document.createElement('div');
+                        const sev = (finding.severity || 'info').toLowerCase();
+                        card.className = 'p-4 bg-muted/20 rounded-lg border-l-4 ' + 
+                            (sev === 'critical' || sev === 'high' ? 'border-red-500' : 
+                             sev === 'medium' ? 'border-yellow-500' : 'border-blue-500');
+                        
+                        const line = finding.location?.line || finding.line;
+                        const code = finding.location?.code || finding.code || '';
+                        
+                        card.innerHTML = `
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-mono px-2 py-1 rounded ${
+                                        sev === 'critical' || sev === 'high' ? 'bg-red-500/20 text-red-400' :
+                                        sev === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                        'bg-blue-500/20 text-blue-400'
+                                    }">${finding.severity || 'INFO'}</span>
+                                    <span class="text-xs font-medium text-foreground">${finding.type || ''}</span>
+                                </div>
+                                ${line ? `<span class="text-xs text-muted">Line ${line}</span>` : ''}
+                            </div>
+                            <p class="text-sm text-foreground mb-2">${finding.reason || finding.description || 'Security issue detected'}</p>
+                            ${finding.cwe ? `<p class="text-xs text-muted mb-2"><i class="fas fa-link mr-1"></i>${finding.cwe}</p>` : ''}
+                            ${code ? `<pre class="text-xs bg-black/30 p-2 rounded overflow-x-auto mb-2 font-mono"><code>${code}</code></pre>` : ''}
+                            ${finding.recommendation ? `<p class="text-xs text-green-400"><i class="fas fa-lightbulb mr-1"></i>${finding.recommendation}</p>` : ''}
+                        `;
+                        container.appendChild(card);
+                    });
+                } else {
+                    container.innerHTML = '<p class="text-muted text-center p-4">No detailed findings available for this file.</p>';
+                }
+                
+                // Show detail view, hide file list
+                document.getElementById('repoFileDetailView').classList.remove('hidden');
+            });
+    }
+    
+    // Hide file detail view
+    window.hideRepoFileDetail = function() {
+        document.getElementById('repoFileDetailView').classList.add('hidden');
+    };
+    
+    // Toggle repo details view
+    window.toggleRepoDetails = function() {
+        // This could expand/collapse the file list or show more info
+        // For now it scrolls to show all files
+        document.getElementById('repoFilesList').scrollIntoView({ behavior: 'smooth' });
+    };
+    </script>
 {% endblock %}

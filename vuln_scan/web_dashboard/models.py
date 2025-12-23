@@ -61,3 +61,57 @@ class CodeScanHistory(models.Model):
             return json.loads(self.full_result_json)
         except:
             return {}
+
+
+class ScanUsage(models.Model):
+    """
+    Tracks usage limits for a user (e.g. daily scans).
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='scan_usage')
+    daily_scan_count = models.IntegerField(default=0)
+    last_reset = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.daily_scan_count} scans"
+
+
+class ScanProject(models.Model):
+    """
+    Represents a multi-file scan project (e.g. Git Repo).
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='scan_projects')
+    name = models.CharField(max_length=255)
+    repo_url = models.CharField(max_length=512, blank=True)
+    status = models.CharField(max_length=20, default='PENDING') # PENDING, PROCESSING, COMPLETED, ERROR
+    
+    total_files = models.IntegerField(default=0)
+    processed_files = models.IntegerField(default=0)
+    risk_score = models.IntegerField(default=0)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"Project {self.name} ({self.status})"
+
+
+class ScanFileResult(models.Model):
+    """
+    Finding for a single file within a project.
+    """
+    project = models.ForeignKey(ScanProject, on_delete=models.CASCADE, related_name='file_results')
+    filename = models.CharField(max_length=512)
+    status = models.CharField(max_length=20, default='PENDING')
+    risk_score = models.IntegerField(default=0)
+    severity = models.CharField(max_length=10, default='SAFE') # SAFE, LOW, MEDIUM, HIGH, CRITICAL
+    
+    findings_json = models.TextField(default='[]')
+    
+    def set_findings(self, findings: list):
+        self.findings_json = json.dumps(findings)
+        
+    def get_findings(self) -> list:
+        try:
+            return json.loads(self.findings_json)
+        except:
+            return []
