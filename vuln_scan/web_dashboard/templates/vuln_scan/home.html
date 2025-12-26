@@ -1,0 +1,288 @@
+{% extends 'base_public.html' %}
+
+{% block title %}VULNRIX - Advanced Security Intelligence{% endblock %}
+
+{% block extra_head %}
+<!-- Neon Effects -->
+<style>
+    .hero-glow {
+        text-shadow: 0 0 10px rgba(16, 185, 129, 0.5), 0 0 20px rgba(16, 185, 129, 0.3);
+    }
+    .scanner-box {
+        background: rgba(10, 10, 10, 0.8);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    }
+    .scanner-box:hover {
+        border-color: rgba(16, 185, 129, 0.5);
+        box-shadow: 0 0 40px rgba(16, 185, 129, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="relative w-full max-w-6xl mx-auto px-4 py-12 flex flex-col items-center">
+    
+    <!-- Top Nav -->
+    <div class="absolute top-0 right-0 p-4 flex gap-4">
+        {% if user.is_authenticated %}
+            <a href="{% url 'vuln_scan:dashboard' %}" class="btn btn--primary">
+                <i class="fas fa-columns mr-2"></i> Dashboard
+            </a>
+        {% else %}
+            <a href="{% url 'accounts_login' %}" class="btn btn--outline">Login</a>
+            <a href="{% url 'accounts_signup' %}" class="btn btn--primary">Register</a>
+        {% endif %}
+    </div>
+
+    <!-- Hero Section -->
+    <div class="text-center mb-16 mt-12 animate-fade-in-up">
+        <h1 class="text-5xl md:text-7xl font-bold mb-6 tracking-tight hero-glow">
+            <span class="text-primary">VULNRIX</span> SECURITY
+        </h1>
+        <p class="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+            Next-generation <strong>Digital Footprint</strong> & <strong>Code Vulnerability</strong> analysis platform.
+            AI-powered detection for the modern web.
+        </p>
+        
+        <div class="flex flex-wrap justify-center gap-4 text-sm text-muted">
+            <span class="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/20 border border-muted/30">
+                <i class="fas fa-shield-alt text-primary"></i> Zero-Config
+            </span>
+            <span class="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/20 border border-muted/30">
+                <i class="fas fa-brain text-purple-400"></i> AI Analysis
+            </span>
+            <span class="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/20 border border-muted/30">
+                <i class="fab fa-git-alt text-orange-400"></i> Repo Scanning
+            </span>
+        </div>
+    </div>
+
+    <!-- Demo Scanner -->
+    <div class="w-full max-w-2xl mx-auto scanner-box rounded-xl p-8 transform transition-all duration-300">
+        <div class="text-center mb-6">
+            <h2 class="text-2xl font-bold mb-2">Try functionality Demo</h2>
+            {% if not user.is_authenticated %}
+            <p class="text-sm text-muted-foreground">
+                Guest Limit: <span id="guestCount" class="text-primary font-bold">0</span>/2 Scans
+            </p>
+            {% else %}
+            <p class="text-sm text-green-400">Unlimited Access (Logged In)</p>
+            {% endif %}
+        </div>
+
+        <!-- Upload Zone -->
+        <div id="dropZone" class="border-2 border-dashed border-border hover:border-primary/50 transition-colors rounded-lg p-10 cursor-pointer bg-background/50 relative overflow-hidden group">
+            <input type="file" id="fileInput" class="hidden">
+            
+            <div class="flex flex-col items-center justify-center pointer-events-none group-hover:scale-105 transition-transform duration-300">
+                <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary text-3xl">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <h3 class="text-lg font-medium mb-1">Drop file to scan</h3>
+                <p class="text-xs text-muted-foreground">Supported: .py, .js, .php, .go, .java, .c</p>
+            </div>
+            
+            <!-- Loading Overlay -->
+            <div id="scanLoading" class="absolute inset-0 bg-background/90 z-20 hidden flex-col items-center justify-center backdrop-blur-sm">
+                <div class="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p class="text-primary font-mono animate-pulse">ANALYZING...</p>
+            </div>
+        </div>
+
+        <!-- Result Area -->
+        <div id="scanResult" class="mt-6 hidden animate-fade-in-up">
+            <div class="bg-card border border-border rounded-lg p-4">
+                <div class="flex items-start justify-between mb-4">
+                    <div>
+                        <h4 class="font-bold text-lg" id="resultFilename">file.py</h4>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span id="resultSeverity" class="badge">HIGH</span>
+                            <span class="text-xs text-muted">Risk Score: <span id="resultScore">85</span>/100</span>
+                        </div>
+                    </div>
+                    <button onclick="resetScanner()" class="text-xs text-muted hover:text-foreground">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+                
+                <div id="resultFindings" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                    <!-- Dynamic findings -->
+                </div>
+                
+                {% if not user.is_authenticated %}
+                <div class="mt-4 pt-4 border-t border-border text-center">
+                    <a href="{% url 'accounts_signup' %}" class="text-xs text-primary hover:underline">
+                        Create account for full report & history &rarr;
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Login Modal (Hidden) -->
+    <div id="limitModal" class="fixed inset-0 z-50 bg-black/80 hidden items-center justify-center backdrop-blur-sm p-4">
+        <div class="bg-card w-full max-w-md p-8 rounded-xl border border-primary/30 shadow-2xl relative scanner-box">
+            <button onclick="closeLimitModal()" class="absolute top-4 right-4 text-muted hover:text-foreground">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="text-center">
+                <div class="w-16 h-16 bg-primary/20 text-primary rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-2">Guest Limit Reached</h3>
+                <p class="text-muted-foreground mb-8">
+                    You've used your 2 free demo scans. Create a free account to continue scanning with unlimited access, history tracking, and advanced AI features.
+                </p>
+                <div class="grid gap-3">
+                    <a href="{% url 'accounts_signup' %}" class="btn btn--primary w-full py-3">Create Free Account</a>
+                    <a href="{% url 'accounts_login' %}" class="btn btn--outline w-full py-3">Login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const scanLoading = document.getElementById('scanLoading');
+    const scanResult = document.getElementById('scanResult');
+    const limitModal = document.getElementById('limitModal');
+    const guestCountSpan = document.getElementById('guestCount');
+    
+    const IS_LOGGED_IN = {{ user.is_authenticated|yesno:"true,false" }};
+    let guestScans = 0; // Will be synced with server response
+
+    // Drag & Drop
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-primary');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-primary'));
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-primary');
+        if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', (e) => {
+        if(e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+        if(!IS_LOGGED_IN && guestScans >= 2) {
+            limitModal.style.display = 'flex';
+            return;
+        }
+        
+        uploadFile(file);
+    }
+
+    async function uploadFile(file) {
+        // Show Loading
+        scanLoading.classList.remove('hidden');
+        scanResult.classList.add('hidden');
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        try {
+            const res = await fetch('{% url "vuln_scan:home" %}', {
+                method: 'POST',
+                body: formData
+            });
+            
+            // Check content type for JSON vs HTML error
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                 throw new Error("Server error (Invalid Response)");
+            }
+
+            const data = await res.json();
+            
+            if(data.error) {
+                if(res.status === 403 && data.limit_reached) {
+                    limitModal.style.display = 'flex';
+                } else {
+                    alert('Error: ' + data.error);
+                }
+                return;
+            }
+
+            // Update UI
+            showResult(data, file.name);
+            
+            // Update limit count from server
+            if(data.guest_scans !== undefined) {
+                guestScans = data.guest_scans;
+                if(guestCountSpan) guestCountSpan.textContent = guestScans;
+            }
+
+        } catch(e) {
+            console.error(e);
+            alert('Scan failed. Please try again.');
+        } finally {
+            scanLoading.classList.add('hidden');
+            fileInput.value = ''; // Reset input
+        }
+    }
+
+    function showResult(data, filename) {
+        document.getElementById('resultFilename').textContent = filename;
+        document.getElementById('resultScore').textContent = data.risk_score;
+        
+        const sevSpan = document.getElementById('resultSeverity');
+        let sev = 'SAFE';
+        let color = 'text-green-500';
+        
+        if(data.findings && data.findings.length > 0) {
+            // Determine max severity
+            const sevs = data.findings.map(f => f.severity.toUpperCase());
+            if(sevs.includes('CRITICAL')) { sev='CRITICAL'; color='text-red-600'; }
+            else if(sevs.includes('HIGH')) { sev='HIGH'; color='text-red-500'; }
+            else if(sevs.includes('MEDIUM')) { sev='MEDIUM'; color='text-yellow-500'; }
+            else { sev='LOW'; color='text-blue-500'; }
+        }
+        
+        sevSpan.textContent = sev;
+        sevSpan.className = `badge font-bold ${color} border border-current bg-transparent px-2 py-0.5 rounded text-xs`;
+        
+        // Findings List
+        const container = document.getElementById('resultFindings');
+        container.innerHTML = '';
+        
+        if(data.findings && data.findings.length) {
+            data.findings.forEach(f => {
+                const div = document.createElement('div');
+                div.className = 'text-sm p-2 bg-muted/20 rounded border-l-2 custom-border';
+                div.style.borderLeftColor = f.severity === 'HIGH' ? '#ef4444' : (f.severity === 'MEDIUM' ? '#eab308' : '#22c55e');
+                div.innerHTML = `
+                    <div class="flex justify-between">
+                        <span class="font-bold text-xs uppercase opacity-80">${f.type || 'Issue'}</span>
+                        <span class="text-xs text-muted">Ln ${f.line}</span>
+                    </div>
+                    <p class="mt-1">${f.description || f.reason}</p>
+                `;
+                container.appendChild(div);
+            });
+        } else {
+            container.innerHTML = `<div class="text-center text-green-500 py-4"><i class="fas fa-check-circle text-2xl mb-2"></i><p>No vulnerabilities found!</p></div>`;
+        }
+        
+        scanResult.classList.remove('hidden');
+    }
+
+    function resetScanner() {
+        scanResult.classList.add('hidden');
+    }
+    
+    function closeLimitModal() {
+        limitModal.style.display = 'none';
+    }
+</script>
+{% endblock %}

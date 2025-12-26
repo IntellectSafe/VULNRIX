@@ -22,6 +22,8 @@ vuln_scan_dir = Path(__file__).parent.parent.absolute()
 if str(vuln_scan_dir) not in sys.path:
     sys.path.insert(0, str(vuln_scan_dir))
 
+from ..services.llm_dispatcher import LLMDispatcher
+
 # Initialize logger
 logger = logging.getLogger("vuln_scan")
 
@@ -641,5 +643,77 @@ def project_file_details(request, project_id, file_id):
             "project_name": project.name
         })
     except Exception as e:
-        logger.error(f"File Details Error: {e}")
         return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def home(request):
+    """
+    Public Welcome Page & Demo Scanner.
+    Limit: 2 scans per guest session.
+    """
+    if request.method == "GET":
+        return render(request, "vuln_scan/home.html")
+        
+    if request.method == "POST":
+        try:
+            # 1. Guest Rate Limit Check
+            if not request.user.is_authenticated:
+                guest_scans = request.session.get('guest_scans', 0)
+                if guest_scans >= 2:
+                    return JsonResponse({
+                        "error": "Guest limit reached",
+                        "limit_reached": True,
+                        "guest_scans": guest_scans
+                    }, status=403)
+                
+                # Increment scan count
+                request.session['guest_scans'] = guest_scans + 1
+                request.session.modified = True
+            
+            # 2. File Upload Handling
+            file = request.FILES.get("file")
+            if not file:
+                return JsonResponse({"error": "No file uploaded"}, status=400)
+                
+            # Create temp file
+            temp_dir = Path(tempfile.gettempdir()) / "vulnrix_guest"
+            temp_dir.mkdir(exist_ok=True)
+            
+            # Use original filename but secure it (basic check)
+            original_name = file.name
+            safe_name = "".join(c for c in original_name if c.isalnum() or c in "._-")
+            if not safe_name: safe_name = "guest_upload.tmp"
+                
+            tmp_path = temp_dir / f"guest_{int(time.time())}_{safe_name}"
+            
+            with open(tmp_path, "wb+") as destination:
+                for chunk in file.chunks():
+                    destination.write(chunk)
+            
+            # 3. Scanning
+            pipeline = get_pipeline()
+            dispatcher = LLMDispatcher(pipeline)
+            
+            # Use 'fast' mode for public demo to save resources
+            result = dispatcher.scan_file(str(tmp_path), mode="fast")
+            
+            # Cleanup
+            try:
+                os.remove(tmp_path)
+            except:
+                pass
+            
+            guest_count = request.session.get('guest_scans', 0) if not request.user.is_authenticated else 0
+            
+            return JsonResponse({
+                "status": "success",
+                "risk_score": result.get('risk_score', 0),
+                "findings": result.get('findings', []),
+                "guest_scans": guest_count
+            })
+            
+        except Exception as e:
+            logger.error(f"Home Scan Error: {e}")
+            return JsonResponse({"error": str(e)}, status=500)

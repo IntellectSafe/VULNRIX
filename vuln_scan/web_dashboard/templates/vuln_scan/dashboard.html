@@ -950,7 +950,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const formData = new FormData();
             formData.append('repo_url', url);
             
-            addLog("Cloning repository...", "info");
+            addLog("Fetching repository...", "info");
             projectProgress.classList.remove('hidden');
             
             const res = await fetch('/vuln/scan/repo/', {
