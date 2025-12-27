@@ -576,26 +576,24 @@ tr:hover { background-color: hsl(var(--muted) / 0.5); }
 }
 
 /* ==========================================================================
-   NUCLEAR OVERRIDES - FORCED VISIBILITY
+   NUCLEAR OVERRIDES - DISABLED
+   (These were breaking the Welcome Page design)
    ========================================================================== */
-/* Force all standard text to white with 100% opacity */
+/* 
 body, p, span, div, li, td, th, input, button, a, label, h1, h2, h3, h4, h5, h6 {
     color: #ffffff !important;
     opacity: 1 !important;
 }
 
-/* Force headings to Brand Teal */
 h1, h2, h3, h4, h5, h6 {
     color: #00d4d4 !important;
 }
 
-/* Specific overrides for utility classes that might set grey/muted colors */
 .text-muted, .text-gray-500, .text-zinc-500, .text-slate-500, .text-gray-400, .text-muted-foreground {
-    color: #d1d5db !important; /* Light Gray */
+    color: #d1d5db !important;
     opacity: 1 !important;
 }
 
-/* Ensure branding colors are preserved where needed (e.g., icons, special highlights) */
 .text-primary {
     color: #00d4d4 !important;
 }
@@ -612,7 +610,7 @@ h1, h2, h3, h4, h5, h6 {
     color: #f59e0b !important;
 }
 
-/* Backgrounds */
 .bg-background {
     background-color: #0a0a0f !important;
 }
+*/

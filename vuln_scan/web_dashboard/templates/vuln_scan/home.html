@@ -31,30 +31,31 @@
                 <i class="fas fa-columns mr-2"></i> Dashboard
             </a>
         {% else %}
-            <a href="{% url 'accounts_login' %}" class="btn btn--outline">Login</a>
-            <a href="{% url 'accounts_signup' %}" class="btn btn--primary">Register</a>
+            <a href="{% url 'accounts:login' %}" class="btn btn--outline">Login</a>
+            <a href="{% url 'accounts:register' %}" class="btn btn--primary">Register</a>
         {% endif %}
     </div>
 
     <!-- Hero Section -->
     <div class="text-center mb-16 mt-12 animate-fade-in-up">
-        <h1 class="text-5xl md:text-7xl font-bold mb-6 tracking-tight hero-glow">
-            <span class="text-primary">VULNRIX</span> SECURITY
+        <h1 class="text-5xl md:text-7xl font-bold mb-6 tracking-tight hero-glow relative inline-block">
+            <span class="text-primary relative z-10">VULNRIX</span> <span class="text-foreground relative z-10">SECURITY</span>
+            <div class="absolute -inset-4 bg-primary/20 blur-3xl -z-10 rounded-full opacity-50"></div>
         </h1>
-        <p class="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Next-generation <strong>Digital Footprint</strong> & <strong>Code Vulnerability</strong> analysis platform.
-            AI-powered detection for the modern web.
+        <p class="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+            The advanced <strong>Digital Footprint</strong> & <strong>Vulnerability Analysis</strong> platform.
+            <span class="block mt-2 text-foreground font-medium">Secure your code. Monitor your perimeter. Detect threats.</span>
         </p>
         
-        <div class="flex flex-wrap justify-center gap-4 text-sm text-muted">
-            <span class="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/20 border border-muted/30">
-                <i class="fas fa-shield-alt text-primary"></i> Zero-Config
+        <div class="flex flex-wrap justify-center gap-4 text-sm font-medium">
+            <span class="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 text-primary shadow-[0_0_15px_rgba(0,212,212,0.2)] hover:shadow-[0_0_25px_rgba(0,212,212,0.4)] transition-all cursor-default">
+                <i class="fas fa-shield-alt"></i> Zero-Config
             </span>
-            <span class="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/20 border border-muted/30">
-                <i class="fas fa-brain text-purple-400"></i> AI Analysis
+            <span class="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.2)] hover:shadow-[0_0_25px_rgba(168,85,247,0.4)] transition-all cursor-default">
+                <i class="fas fa-brain"></i> AI-Enhanced
             </span>
-            <span class="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/20 border border-muted/30">
-                <i class="fab fa-git-alt text-orange-400"></i> Repo Scanning
+            <span class="flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.2)] hover:shadow-[0_0_25px_rgba(249,115,22,0.4)] transition-all cursor-default">
+                <i class="fab fa-git-alt"></i> Repo Scanning
             </span>
         </div>
     </div>
@@ -113,7 +114,7 @@
                 
                 {% if not user.is_authenticated %}
                 <div class="mt-4 pt-4 border-t border-border text-center">
-                    <a href="{% url 'accounts_signup' %}" class="text-xs text-primary hover:underline">
+                    <a href="{% url 'accounts:register' %}" class="text-xs text-primary hover:underline">
                         Create account for full report & history &rarr;
                     </a>
                 </div>
@@ -137,8 +138,8 @@
                     You've used your 2 free demo scans. Create a free account to continue scanning with unlimited access, history tracking, and advanced AI features.
                 </p>
                 <div class="grid gap-3">
-                    <a href="{% url 'accounts_signup' %}" class="btn btn--primary w-full py-3">Create Free Account</a>
-                    <a href="{% url 'accounts_login' %}" class="btn btn--outline w-full py-3">Login</a>
+                    <a href="{% url 'accounts:register' %}" class="btn btn--primary w-full py-3">Create Free Account</a>
+                    <a href="{% url 'accounts:login' %}" class="btn btn--outline w-full py-3">Login</a>
                 </div>
             </div>
         </div>
@@ -192,7 +193,7 @@
         formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
         try {
-            const res = await fetch('{% url "vuln_scan:home" %}', {
+            const res = await fetch('{% url "home" %}', {
                 method: 'POST',
                 body: formData
             });
