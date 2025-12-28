@@ -25,7 +25,7 @@ API_KEY = os.environ.get('VULNRIX_API_KEY', '')
 def get_headers():
     """Get API request headers."""
     if not API_KEY:
-        print("❌ Error: VULNRIX_API_KEY environment variable not set")
+        print(" Error: VULNRIX_API_KEY environment variable not set")
         print("   Set it with: export VULNRIX_API_KEY=your_api_key")
         sys.exit(1)
     
@@ -37,7 +37,7 @@ def get_headers():
 
 def osint_scan(args):
     """Run OSINT scan."""
-    print(f"🔍 Starting OSINT scan...")
+    print(f" Starting OSINT scan...")
     
     targets = {}
     if args.email:
@@ -50,7 +50,7 @@ def osint_scan(args):
         targets['domain'] = args.domain
     
     if not targets:
-        print("❌ Error: At least one target (--email, --name, --username, --domain) required")
+        print(" Error: At least one target (--email, --name, --username, --domain) required")
         sys.exit(1)
     
     payload = {
@@ -79,18 +79,18 @@ def osint_scan(args):
         return result
         
     except requests.exceptions.RequestException as e:
-        print(f"❌ API Error: {e}")
+        print(f" API Error: {e}")
         sys.exit(1)
 
 
 def code_scan(args):
     """Run code vulnerability scan."""
-    print(f"🔍 Starting code scan on {args.path}...")
+    print(f" Starting code scan on {args.path}...")
     
     scan_path = Path(args.path)
     
     if not scan_path.exists():
-        print(f"❌ Error: Path not found: {args.path}")
+        print(f" Error: Path not found: {args.path}")
         sys.exit(1)
     
     # Collect files to scan
@@ -104,7 +104,7 @@ def code_scan(args):
             files.extend(scan_path.rglob(f'*{ext}'))
     
     files = files[:100]  # Limit to 100 files
-    print(f"📁 Found {len(files)} files to scan")
+    print(f" Found {len(files)} files to scan")
     
     all_findings = []
     
@@ -134,7 +134,7 @@ def code_scan(args):
                         all_findings.append(finding)
             
         except Exception as e:
-            print(f"   ⚠️ Error scanning {file_path}: {e}")
+            print(f"    Error scanning {file_path}: {e}")
     
     # Build result
     result = {
@@ -175,7 +175,7 @@ def code_scan(args):
 
 def breach_check(args):
     """Check for password/email breaches."""
-    print(f"🔍 Checking {args.type} for breaches...")
+    print(f" Checking {args.type} for breaches...")
     
     try:
         response = requests.post(
@@ -194,21 +194,21 @@ def breach_check(args):
             print(json.dumps(result, indent=2))
         else:
             if result.get('found'):
-                print(f"⚠️ EXPOSED: Found in {result.get('count', 0):,} breaches!")
+                print(f" EXPOSED: Found in {result.get('count', 0):,} breaches!")
             else:
-                print("✅ Not found in known breaches")
+                print(" Not found in known breaches")
         
         return result
         
     except requests.exceptions.RequestException as e:
-        print(f"❌ API Error: {e}")
+        print(f" API Error: {e}")
         sys.exit(1)
 
 
 def print_osint_summary(result):
     """Print formatted OSINT results."""
     print("\n" + "="*60)
-    print("📊 OSINT Scan Results")
+    print(" OSINT Scan Results")
     print("="*60)
     print(f"Risk Score: {result.get('risk_score', 0)}/100")
     
@@ -216,11 +216,11 @@ def print_osint_summary(result):
     
     if 'email' in findings:
         breaches = findings['email'].get('breaches', {})
-        print(f"\n📧 Email Analysis:")
+        print(f"\n Email Analysis:")
         print(f"   Breaches found: {len(breaches.get('breaches', []))}")
     
     if 'username' in findings:
-        print(f"\n👤 Username Analysis:")
+        print(f"\n Username Analysis:")
         social = findings['username'].get('social_media', {})
         print(f"   Social accounts found: {len(social)}")
     
@@ -230,7 +230,7 @@ def print_osint_summary(result):
 def print_code_summary(result):
     """Print formatted code scan results."""
     print("\n" + "="*60)
-    print("📊 Code Scan Results")
+    print(" Code Scan Results")
     print("="*60)
     print(f"Status: {result['status']}")
     print(f"Files scanned: {result['files_scanned']}")
@@ -241,7 +241,7 @@ def print_code_summary(result):
     print(f"   Low:      {result['summary']['low']}")
     
     if result['findings']:
-        print("\n📋 Top Findings:")
+        print("\n Top Findings:")
         for finding in result['findings'][:5]:
             sev = finding.get('severity', 'Unknown')
             print(f"   [{sev}] {finding.get('type', 'Unknown')} in {finding.get('file', 'unknown')}:{finding.get('line', 0)}")
