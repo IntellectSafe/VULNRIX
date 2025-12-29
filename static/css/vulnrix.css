@@ -93,12 +93,8 @@ html {
 
 body {
     background-color: hsl(var(--background));
-    /* Visible Ambient Gradient - Teal/Greenish Glow */
-    background-image: 
-        radial-gradient(circle at 15% 15%, rgba(0, 212, 212, 0.15) 0%, transparent 50%),
-        radial-gradient(circle at 85% 30%, rgba(0, 212, 212, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 50% 0%, rgba(0, 212, 212, 0.1) 0%, transparent 60%);
-    background-attachment: fixed;
+    background-image: none;
+    background-attachment: scroll;
     background-size: cover;
     color: hsl(var(--foreground));
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -349,7 +345,7 @@ tr:hover { background-color: hsl(var(--muted) / 0.5); }
 /* ========================================
    Sidebar & Navigation (Clean)
    ======================================== */
-.app-layout { display: flex; min-height: 100vh; background: hsl(var(--background)); }
+.app-layout { display: flex; min-height: 100vh; background: transparent; }
 
 .sidebar {
     width: 250px;
