@@ -158,28 +158,41 @@ void sha1_string(const char* str, char* hash_out) {
  * Note: HIBP requires HTTPS, this is a simplified version
  * In production, use libcurl or OpenSSL
  */
+/*
+ * Simple HTTP GET request (for HIBP API)
+ * Note: HIBP requires HTTPS, this is a simplified version
+ * In production, use libcurl or OpenSSL
+ */
 int http_get(const char* host, int port, const char* path, char* response, int max_len) {
     int sock;
-    struct sockaddr_in addr;
-    struct hostent* he;
+    struct addrinfo hints, *res;
+    char port_str[6];
     char request[1024];
     int total = 0, bytes;
     
-    he = gethostbyname(host);
-    if (!he) return -1;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
     
-    sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0) return -1;
+    snprintf(port_str, sizeof(port_str), "%d", port);
     
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    memcpy(&addr.sin_addr, he->h_addr_list[0], he->h_length);
-    
-    if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        close(sock);
+    if (getaddrinfo(host, port_str, &hints, &res) != 0) {
         return -1;
     }
+    
+    sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if (sock < 0) {
+        freeaddrinfo(res);
+        return -1;
+    }
+    
+    if (connect(sock, res->ai_addr, res->ai_addrlen) < 0) {
+        close(sock);
+        freeaddrinfo(res);
+        return -1;
+    }
+    
+    freeaddrinfo(res);
     
     snprintf(request, sizeof(request),
              "GET %s HTTP/1.1\r\n"

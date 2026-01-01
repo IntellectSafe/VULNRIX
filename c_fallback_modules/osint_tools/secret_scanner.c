@@ -133,6 +133,8 @@ int extract_secret(const char* line, int pos, char* out, int max) {
 void scan_line(const char* filepath, const char* line, int line_num) {
     char lower[MAX_LINE_LEN];
     strncpy(lower, line, MAX_LINE_LEN - 1);
+    lower[MAX_LINE_LEN - 1] = '\0'; // Ensure NULL termination
+    
     for (int i = 0; lower[i]; i++) lower[i] = tolower(lower[i]);
     
     for (int p = 0; PATTERNS[p].name; p++) {
@@ -149,11 +151,13 @@ void scan_line(const char* filepath, const char* line, int line_num) {
         if (match && finding_count < MAX_FINDINGS) {
             finding_t* f = &findings[finding_count];
             strncpy(f->file, filepath, MAX_PATH_LEN - 1);
+            f->file[MAX_PATH_LEN - 1] = '\0'; // Ensure NULL
             f->line_number = line_num;
             f->type_name = PATTERNS[p].name;
             f->severity = PATTERNS[p].severity;
             
             strncpy(f->line, line, 500);
+            f->line[511] = '\0'; // Ensure NULL (struct has 512)
             char* nl = strchr(f->line, '\n');
             if (nl) *nl = '\0';
             
