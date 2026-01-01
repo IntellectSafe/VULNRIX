@@ -341,6 +341,7 @@ int compute_file_hashes(const char* filename, hash_result_t* result) {
     
     memset(result, 0, sizeof(hash_result_t));
     strncpy(result->filename, filename, sizeof(result->filename) - 1);
+    result->filename[sizeof(result->filename) - 1] = '\0'; // Ensure NULL
     
     fp = fopen(filename, "rb");
     if (!fp) {
