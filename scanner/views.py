@@ -280,6 +280,49 @@ def new_scan(request):
             if domain:
                 detailed_social_report[domain] = {}
 
+            # 4. NAME (Added per user request)
+            if name:
+                name_findings = {}
+                
+                # IntelX / Leaks for Name
+                if intelx_results.get('name'):
+                     ix_list = []
+                     for r in intelx_results['name'].get('records', []):
+                         ix_list.append({
+                             'title': f"LEAK_RECORD: {r.get('name', 'Unknown')}",
+                             'link': '#',
+                             'details': f"Date: {r.get('date', 'N/A')} // Type: {r.get('bucket', 'General')}"
+                         })
+                     if ix_list:
+                         name_findings['identity_leaks'] = ix_list
+
+                # Web Mentions / Search (Corrected Logic)
+                # search_results comes from search_engine.find_mentions -> {'name': [], 'email': [], ...}
+                if search_results and 'name' in search_results:
+                     mentions_list = []
+                     for res in search_results['name']:
+                         mentions_list.append({
+                             'title': f"MENTION: {res.get('title', 'Unknown Source')}",
+                             'link': res.get('link', '#'),
+                             'snippet': res.get('snippet', '')
+                         })
+                     
+                     if mentions_list:
+                         name_findings['public_mentions'] = mentions_list
+                     else:
+                        # If list is empty, force an entry so the UI shows "Scanning..." for mentions
+                        # Actually, keeping it empty allows the UI to show 'Scanning... [CLEAN]' if I update the template
+                        pass
+                
+                # If name_findings is empty, the template loop won't run OR it will run empty.
+                # We need to enforce at least one key if we want the "Scanning..." log to appear.
+                if not name_findings:
+                     # Add dummy keys to trigger the "Scanning Log" UI
+                     name_findings['identity_leaks'] = []
+                     name_findings['public_mentions'] = []
+                
+                detailed_social_report[name] = name_findings
+
             # Finalize: Use this detailed report as the main source for the UI
             social_results = detailed_social_report
             

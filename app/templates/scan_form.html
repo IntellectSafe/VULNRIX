@@ -103,6 +103,32 @@
     </div>
 </div>
 
+
+<!-- Full Screen Overlay (Hacker Style) -->
+<div id="scan-overlay" class="fixed inset-0 bg-black/95 z-[9999] hidden flex-col items-center justify-center p-4 font-mono">
+    <div class="scanline"></div>
+    <div class="relative w-32 h-32 mb-8">
+        <div class="absolute inset-0 border-4 border-green-500/30 rounded-full animate-ping"></div>
+        <div class="absolute inset-0 border-4 border-t-green-500 border-r-transparent border-b-green-500 border-l-transparent rounded-full animate-spin"></div>
+        <div class="absolute inset-0 flex items-center justify-center">
+            <i class="fas fa-user-secret text-4xl text-green-500 animate-pulse"></i>
+        </div>
+    </div>
+    
+    <h2 class="text-2xl font-bold mb-2 text-green-500 glitch" data-text="INFILTRATING_TARGET">INFILTRATING_TARGET</h2>
+    <p class="text-green-700 mb-8 blink" id="scan-status-text">INITIALIZING_VECTORS...</p>
+    
+    <div class="w-full max-w-md bg-green-900/20 border border-green-900 h-4 mb-4 overflow-hidden relative">
+        <div class="h-full bg-green-500 shadow-[0_0_10px_#0f0]" id="progress-fill" style="width: 0%"></div>
+    </div>
+    
+    <div class="w-full max-w-lg mt-8 text-xs text-green-800 font-mono text-left p-4 border border-green-900/50 bg-black">
+        <div id="terminal-logs">
+            <div class="mb-1">> SYSTEM_READY</div>
+        </div>
+    </div>
+</div>
+
 <script>
 // (Removed toggle logic and radio button listeners as they are no longer used)
 
@@ -119,10 +145,11 @@ document.getElementById('quick-scan-form').addEventListener('submit', function(e
     const logMessages = [
         "> CONNECTING_TO_DARKNET_RELAYS...",
         "> BYPASSING_FIREWALLS...",
+        "> ACQUIRING_DIGITAL_FOOTPRINT...", 
         "> SCRAPING_PUBLIC_LEDGERS...",
         "> CROSS_REFERENCING_LEAK_DBS...",
         "> DECRYPTING_METADATA...",
-        "> ASSEMBLING_PROFILE..."
+        "> COMPILING_TARGET_DOSSIER..."
     ];
     
     // Hacker Progress Animation
