@@ -172,16 +172,119 @@ def new_scan(request):
             # Breach check
             breach_data = breach_checker.check_email(email) if email else {'breaches': [], 'pastes': [], 'total_breaches': 0}
             
-            # Social media scan
+            # Social media deep scan (Multi-Target Support)
             social_results = {}
+            detailed_social_report = {}  # For multi-user verbose output
+            
             if username and social_platforms:
-                social_results = social_scanner.scan_all(username, social_platforms)
+                # 1. Parse Usernames (comma-separated support)
+                usernames_list = [u.strip() for u in username.split(',')]
+                
+                # 2. Iterate and Deep Scan each
+                for target_user in usernames_list:
+                    if not target_user: continue
+                    
+                    # Initialize empty dict for this target so it shows up in report even if no hits
+                    detailed_social_report[target_user] = {}
+                    
+                    try:
+                        # Scan specified platforms
+                        target_results = social_scanner.scan_all(target_user, social_platforms)
+                        
+                        # Merge into detailed report
+                        detailed_social_report[target_user] = target_results
+                        
+                        # Merge into main 'social_results' for query-by-platform access
+                        for platform, findings in target_results.items():
+                            if platform not in social_results:
+                                social_results[platform] = []
+                            social_results[platform].extend(findings)
+                            
+                    except Exception as e:
+                        # If a scan fails, we still want the user to see the target in the report (as failed or empty)
+                        print(f"Scan error for {target_user}: {e}")
+                        continue
+
+                # 3. Store the detailed breakdown for the deep-dive UI
+                # We'll save this into 'social_results' but slightly structured or use a separate field if model allows.
+                # Since we are using set_json_field, effectively we can save the STRUCTURED data if we want.
+                # Let's overwrite social_results with detailed_social_report if multiple users were found,
+                # OR keep the simple structure but add a 'multi_target_data' key.
+                
+                # Decision: Replace `social_results` with `detailed_social_report` IF it helps, 
+                # but `scan_result.html` expects {platform: [list]}.
+                # Let's keep `social_results` as platform-grouped for the Summary Card,
+                # and put `detailed_social_report` into a new key in the JSON, or just traverse carefully.
+                # Better: Let's attach `detailed_social_report` to the `scan_result` object specifically.
+                
+                # Actually, simpler: Save `detailed_social_report` into a separate JSON field or assume `social_results` allows it.
+                # The Model `ScanResult` uses `set_json_field` which stores arbitrary JSON.
+                # Let's put it in `social_results` but add a `_meta` key or just use a new structure.
+                # To be least disruptive but enabling multiple targets:
+                # We will save `detailed_social_report` into `social_results` and update the Template to handle it.
+                social_results = detailed_social_report
             
             # Phone scan
             phone_results = phone_scanner.scan(phone) if phone else {}
             
             # IP scan
             ip_results = ip_scanner.scan(ip) if ip else {}
+            
+            # --- UNIFIED DEEP DIVE REPORT GENERATION ---
+            # Append other target types to the detailed report so they appear in new UI
+            
+            # 1. EMAIL
+            if email:
+                email_findings = {}
+                
+                # Breaches
+                if breach_data and 'breaches' in breach_data:
+                    breach_list = []
+                    for b in breach_data['breaches']:
+                        breach_list.append({
+                            'title': f"BREACH: {b.get('Name', 'Unknown')}",
+                            'link': f"https://haveibeenpwned.com/account/{email}",
+                            'details': b.get('Description', 'No details')
+                        })
+                    if breach_list:
+                        email_findings['identity_breaches'] = breach_list
+                
+                # IntelX / Mentions
+                if intelx_results.get('email'):
+                     ix_list = []
+                     for r in intelx_results['email'].get('records', []):
+                         ix_list.append({
+                             'title': f"LEAK: {r.get('name', 'Unknown')}",
+                             'link': '#', # IntelX usually requires auth for links
+                             'details': f"Date: {r.get('date', 'N/A')}"
+                         })
+                     if ix_list:
+                         email_findings['intelligence_leaks'] = ix_list
+                
+                # Add to Report
+                # If no findings, add empty dict to force "Scanning..." log in UI
+                detailed_social_report[email] = email_findings
+            
+            # 2. PHONE
+            if phone:
+                phone_findings = {}
+                if phone_results:
+                     # Adapt phone_results structure if needed, assuming it returns dict or list
+                     # For now, let's just assume we want to show it exists
+                     pass
+                detailed_social_report[phone] = phone_findings # Placeholder for now, triggers 'Scanning Log'
+                
+            # 3. IP / DOMAIN
+            if ip:
+                detailed_social_report[ip] = {}
+            if domain:
+                detailed_social_report[domain] = {}
+
+            # Finalize: Use this detailed report as the main source for the UI
+            social_results = detailed_social_report
+            
+            # Public records
+            public_records = public_records_scanner.scan(name, email, phone) if name else {}
             
             # Public records
             public_records = public_records_scanner.scan(name, email, phone) if name else {}

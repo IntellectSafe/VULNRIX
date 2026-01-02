@@ -18,69 +18,15 @@
 
         <form method="POST" id="quick-scan-form" class="space-y-6 font-mono">
             {% csrf_token %}
-            <!-- Default to quick mode for this interface -->
-            <input type="hidden" name="scan_mode" value="quick">
+            <input type="hidden" name="scan_mode" value="advanced_dossier">
             
-            <!-- Radio buttons for scan type (Hacker Style) -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
-                <label class="quick-type-option cursor-pointer border border-green-800 bg-black hover:border-green-500 hover:shadow-[0_0_10px_rgba(0,255,0,0.2)] transition-all p-3 rounded flex flex-col items-center gap-2 group">
-                    <input type="radio" name="quick_type" value="email" class="hidden">
-                    <i class="fas fa-envelope text-xl text-green-700 group-hover:text-green-400 transition-colors"></i>
-                    <span class="text-[10px] uppercase tracking-widest text-green-700 group-hover:text-green-400">Email</span>
-                </label>
-                <label class="quick-type-option cursor-pointer border border-green-800 bg-black hover:border-green-500 hover:shadow-[0_0_10px_rgba(0,255,0,0.2)] transition-all p-3 rounded flex flex-col items-center gap-2 group">
-                    <input type="radio" name="quick_type" value="username" class="hidden">
-                    <i class="fas fa-user-secret text-xl text-green-700 group-hover:text-green-400 transition-colors"></i>
-                    <span class="text-[10px] uppercase tracking-widest text-green-700 group-hover:text-green-400">User</span>
-                </label>
-                <label class="quick-type-option cursor-pointer border border-green-800 bg-black hover:border-green-500 hover:shadow-[0_0_10px_rgba(0,255,0,0.2)] transition-all p-3 rounded flex flex-col items-center gap-2 group">
-                    <input type="radio" name="quick_type" value="phone" class="hidden">
-                    <i class="fas fa-phone-alt text-xl text-green-700 group-hover:text-green-400 transition-colors"></i>
-                    <span class="text-[10px] uppercase tracking-widest text-green-700 group-hover:text-green-400">Phone</span>
-                </label>
-                <label class="quick-type-option cursor-pointer border border-green-800 bg-black hover:border-green-500 hover:shadow-[0_0_10px_rgba(0,255,0,0.2)] transition-all p-3 rounded flex flex-col items-center gap-2 group">
-                    <input type="radio" name="quick_type" value="domain" class="hidden">
-                    <i class="fas fa-globe text-xl text-green-700 group-hover:text-green-400 transition-colors"></i>
-                    <span class="text-[10px] uppercase tracking-widest text-green-700 group-hover:text-green-400">Domain</span>
-                </label>
-                <label class="quick-type-option cursor-pointer border border-green-800 bg-black hover:border-green-500 hover:shadow-[0_0_10px_rgba(0,255,0,0.2)] transition-all p-3 rounded flex flex-col items-center gap-2 group">
-                    <input type="radio" name="quick_type" value="ip" class="hidden">
-                    <i class="fas fa-network-wired text-xl text-green-700 group-hover:text-green-400 transition-colors"></i>
-                    <span class="text-[10px] uppercase tracking-widest text-green-700 group-hover:text-green-400">Net/IP</span>
-                </label>
-            </div>
-            
-            <!-- Input Field (Terminal Style) -->
-            <div class="space-y-2 mb-8 group">
-                <label class="text-xs font-mono text-green-600 uppercase tracking-widest group-hover:text-green-400 transition-colors">Target_Identifier >_</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-2.5 text-green-500 font-mono">$</span>
-                    <input type="text" name="quick_value" id="quick-value-input" class="w-full bg-black border border-green-800 text-green-400 p-2 pl-8 font-mono focus:border-green-400 focus:shadow-[0_0_15px_rgba(0,255,0,0.3)] outline-none transition-all placeholder-green-900" placeholder="enter_target...">
+            <!-- Consolidated Target Dossier Form (Always Visible) -->
+            <div id="target-dossier-panel" class="mt-2 animate-in fade-in">
+                
+                <div class="space-y-2 mb-6 text-center">
+                    <p class="text-xs text-green-800 uppercase tracking-widest">--- ENTER_TARGET_VECTORS ---</p>
                 </div>
-            </div>
-            
-            <!-- Darkweb Module Toggle (Hacker Style) -->
-            <div class="flex items-center justify-end mb-2">
-                 <label class="cursor-pointer border border-green-500 bg-green-900/10 px-4 py-2 flex items-center gap-2 hover:bg-green-900/30 transition-all shadow-[0_0_5px_rgba(0,255,0,0.3)] animate-pulse">
-                    <input type="checkbox" name="darkweb_check" value="true" checked class="accent-green-500">
-                    <span class="text-xs text-green-400 font-mono font-bold tracking-wider glitch" data-text="DARKWEB_ACTIVE"><i class="fas fa-skull mr-1"></i> DARKWEB_MODULE :: ACTIVE</span>
-                </label>
-            </div>
 
-        <div class="flex justify-center mt-6">
-            <button type="submit" class="btn btn--primary w-full border border-green-500 text-green-500 hover:bg-green-500 hover:text-black uppercase font-bold tracking-widest py-3 transition-all shadow-[0_0_10px_rgba(0,255,0,0.1)] hover:shadow-[0_0_20px_rgba(0,255,0,0.6)]">
-                <i class="fas fa-biohazard mr-2"></i> EXECUTE_SCAN
-            </button>
-        </div>
-        </form>
-        
-        
-        <div class="mt-8 border-t border-green-900 pt-6">
-            <button type="button" onclick="toggleAdvanced()" class="text-xs font-mono text-green-700 hover:text-green-500 flex items-center gap-2 transition-colors">
-                <i class="fas fa-plus-square" id="adv-icon"></i> ACCESS_DETAILED_TARGET_DOSSIER [ADVANCED]
-            </button>
-            
-            <div id="advanced-panel" class="hidden mt-6 animate-in fade-in slide-in-from-top-2">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div class="space-y-1">
                         <label class="text-[10px] font-mono text-green-800 uppercase">Target_Full_Name</label>
@@ -91,8 +37,8 @@
                         <input type="email" name="email" class="w-full bg-black border border-green-900 text-green-500 p-2 font-mono text-sm focus:border-green-500 outline-none transition-colors placeholder-green-900/50" placeholder="target@corp.com">
                     </div>
                     <div class="space-y-1">
-                        <label class="text-[10px] font-mono text-green-800 uppercase">Target_Username</label>
-                        <input type="text" name="username" class="w-full bg-black border border-green-900 text-green-500 p-2 font-mono text-sm focus:border-green-500 outline-none transition-colors placeholder-green-900/50" placeholder="shadow_user_99">
+                        <label class="text-[10px] font-mono text-green-800 uppercase">Target_Username(s)</label>
+                        <input type="text" name="username" class="w-full bg-black border border-green-900 text-green-500 p-2 font-mono text-sm focus:border-green-500 outline-none transition-colors placeholder-green-900/50" placeholder="user1, user2 (comma separated)">
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] font-mono text-green-800 uppercase">Target_Phone</label>
@@ -105,7 +51,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div class="space-y-1">
                         <label class="text-[10px] font-mono text-green-800 uppercase">Infrastructure_Domain</label>
-                        <input type="text" name="domain" class="w-full bg-black border border-green-900 text-green-500 p-2 font-mono text-sm focus:border-green-500 outline-none transition-colors placeholder-green-900/50" placeholder="target-systems.net">
+                        <input type="text" name="domain" class="w-full bg-black border border-green-900 text-green-500 p-2 font-mono text-sm focus:border-green-500 outline-none transition-colors placeholder-target-systems.net">
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] font-mono text-green-800 uppercase">Infrastructure_IP</label>
@@ -135,8 +81,22 @@
                     </div>
                 </div>
             </div>
-        </div>
 
+            <!-- Darkweb Module Toggle (Preserved) -->
+            <div class="flex items-center justify-end mb-2">
+                 <label class="cursor-pointer border border-green-500 bg-green-900/10 px-4 py-2 flex items-center gap-2 hover:bg-green-900/30 transition-all shadow-[0_0_5px_rgba(0,255,0,0.3)] animate-pulse">
+                    <input type="checkbox" name="darkweb_check" value="true" checked class="accent-green-500">
+                    <span class="text-xs text-green-400 font-mono font-bold tracking-wider glitch" data-text="DARKWEB_ACTIVE"><i class="fas fa-skull mr-1"></i> DARKWEB_MODULE :: ACTIVE</span>
+                </label>
+            </div>
+
+            <div class="flex justify-center mt-6">
+                <button type="submit" class="btn btn--primary w-full border border-green-500 text-green-500 hover:bg-green-500 hover:text-black uppercase font-bold tracking-widest py-3 transition-all shadow-[0_0_10px_rgba(0,255,0,0.1)] hover:shadow-[0_0_20px_rgba(0,255,0,0.6)]">
+                    <i class="fas fa-biohazard mr-2"></i> EXECUTE_SCAN
+                </button>
+            </div>
+        </form>
+        
         <div class="mt-4 text-center">
              <p class="text-[10px] text-green-900 font-mono">SECURE_CONNECTION_ESTABLISHED // ENCRYPTED_UPLINK_ACTIVE</p>
         </div>
@@ -144,65 +104,7 @@
 </div>
 
 <script>
-function toggleAdvanced() {
-    const panel = document.getElementById('advanced-panel');
-    const icon = document.getElementById('adv-icon');
-    const isHidden = panel.classList.contains('hidden');
-    
-    if (isHidden) {
-        panel.classList.remove('hidden');
-        icon.classList.remove('fa-plus-square');
-        icon.classList.add('fa-minus-square');
-    } else {
-        panel.classList.add('hidden');
-        icon.classList.remove('fa-minus-square');
-        icon.classList.add('fa-plus-square');
-    }
-}
-</script>
-
-<!-- Full Screen Overlay (Hacker Style) -->
-<div id="scan-overlay" class="fixed inset-0 bg-black/95 z-[9999] hidden flex-col items-center justify-center p-4 font-mono">
-    <div class="scanline"></div>
-    <div class="relative w-32 h-32 mb-8">
-        <div class="absolute inset-0 border-4 border-green-500/30 rounded-full animate-ping"></div>
-        <div class="absolute inset-0 border-4 border-t-green-500 border-r-transparent border-b-green-500 border-l-transparent rounded-full animate-spin"></div>
-        <div class="absolute inset-0 flex items-center justify-center">
-            <i class="fas fa-user-secret text-4xl text-green-500 animate-pulse"></i>
-        </div>
-    </div>
-    
-    <h2 class="text-2xl font-bold mb-2 text-green-500 glitch" data-text="INFILTRATING_TARGET">INFILTRATING_TARGET</h2>
-    <p class="text-green-700 mb-8 blink" id="scan-status-text">INITIALIZING_VECTORS...</p>
-    
-    <div class="w-full max-w-md bg-green-900/20 border border-green-900 h-4 mb-4 overflow-hidden relative">
-        <div class="h-full bg-green-500 shadow-[0_0_10px_#0f0]" id="progress-fill" style="width: 0%"></div>
-    </div>
-    
-    <div class="w-full max-w-lg mt-8 text-xs text-green-800 font-mono text-left p-4 border border-green-900/50 bg-black">
-        <div id="terminal-logs">
-            <div class="mb-1">> SYSTEM_READY</div>
-        </div>
-    </div>
-</div>
-
-<script>
-// Selection Styling for Hacker Radio Buttons
-document.querySelectorAll('.quick-type-option input[type="radio"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-        document.querySelectorAll('.quick-type-option').forEach(opt => {
-            opt.classList.remove('border-green-500', 'shadow-[0_0_10px_rgba(0,255,0,0.2)]', 'bg-green-900/10');
-            opt.querySelector('span').classList.remove('text-green-400');
-            opt.querySelector('i').classList.remove('text-green-400');
-        });
-        if (this.checked) {
-            const container = this.closest('.quick-type-option');
-            container.classList.add('border-green-500', 'shadow-[0_0_10px_rgba(0,255,0,0.2)]', 'bg-green-900/10');
-            container.querySelector('span').classList.add('text-green-400');
-            container.querySelector('i').classList.add('text-green-400');
-        }
-    });
-});
+// (Removed toggle logic and radio button listeners as they are no longer used)
 
 document.getElementById('quick-scan-form').addEventListener('submit', function(e) {
     const overlay = document.getElementById('scan-overlay');
