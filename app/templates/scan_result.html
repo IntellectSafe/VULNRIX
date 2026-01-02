@@ -204,25 +204,41 @@
                     <div class="p-4 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar">
                         {% if platforms %}
                             {% for platform, findings in platforms.items %}
-                                {% if findings %}
-                                <div class="relative pl-4 border-l-2 border-green-900 hover:border-green-500 transition-colors">
+                                <div class="relative pl-4 border-l-2 border-green-900 hover:border-green-500 transition-colors mb-2">
                                     <div class="absolute -left-[5px] top-0 w-2 h-2 rounded-full bg-green-900 group-hover:bg-green-500 transition-colors"></div>
                                     <h4 class="text-sm font-bold text-green-600 uppercase mb-2 flex items-center gap-2">
-                                        <i class="fab fa-{{ platform }}"></i> {{ platform }}
-                                        <span class="text-[9px] border border-green-800 px-1 text-green-800">POSITIVE_MATCH</span>
+                                        <i class="fab fa-{{ platform }} fa-fw"></i> {{ platform }}
+                                        {% if findings %}
+                                            <span class="text-[9px] border border-green-800 px-1 text-green-500">MATCH_FOUND</span>
+                                        {% else %}
+                                            <span class="text-[9px] border border-green-900 px-1 text-green-900">NO_PUBLIC_DATA</span>
+                                        {% endif %}
                                     </h4>
-                                    <div class="space-y-2">
-                                        {% for result in findings %}
-                                        <div class="bg-green-900/5 p-2 border border-green-900/20 text-xs font-mono text-green-400 truncate hover:text-green-300 hover:bg-green-900/10 cursor-pointer transition-all">
-                                            <a href="{{ result.link }}" target="_blank" class="flex items-center justify-between">
-                                                <span>> {{ result.title|default:"Profile Detected" }}</span>
-                                                <i class="fas fa-external-link-alt text-[10px] opacity-50"></i>
-                                            </a>
+                                    
+                                    {% if findings %}
+                                        <div class="space-y-2">
+                                            {% for result in findings %}
+                                            <div class="bg-green-900/5 p-2 border border-green-900/20 text-xs font-mono text-green-400 truncate hover:text-green-300 hover:bg-green-900/10 cursor-pointer transition-all">
+                                                <a href="{{ result.link }}" target="_blank" class="flex items-center justify-between">
+                                                    <span>> {{ result.title|default:"Profile Detected" }}</span>
+                                                    <i class="fas fa-external-link-alt text-[10px] opacity-50"></i>
+                                                </a>
+                                                {% if result.snippet %}
+                                                <div class="text-[10px] text-green-800 mt-1 pl-2 border-l border-green-900/30 whitespace-normal">
+                                                    {{ result.snippet|truncatechars:100 }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            {% endfor %}
                                         </div>
-                                        {% endfor %}
-                                    </div>
+                                    {% else %}
+                                        <!-- Clean State Log -->
+                                        <div class="flex justify-between items-center bg-black/50 p-1 px-2 border border-green-900/10 opacity-50">
+                                            <span class="text-[10px] text-green-900">> Scanning {{ platform }} database...</span>
+                                            <span class="text-[10px] text-green-800">[CLEAN]</span>
+                                        </div>
+                                    {% endif %}
                                 </div>
-                                {% endif %}
                             {% endfor %}
                         {% else %}
                             <!-- "Scanning..." Simulation for Empty Results -->
