@@ -145,11 +145,15 @@
                             <h3 class="text-lg font-semibold mb-1">Drop Source Code or Zip</h3>
                             <p class="text-muted text-sm mb-4">Click to browse or drag file here</p>
                             
-                            <div class="flex justify-center gap-2">
-                                <span class="badge badge--outline text-xs">.py</span>
-                                <span class="badge badge--outline text-xs">.js</span>
-                                <span class="badge badge--outline text-xs">.rs</span>
-                                <span class="badge badge--outline text-xs">.zip</span>
+                            <div class="flex flex-wrap justify-center gap-2 mt-2">
+                                <span class="bg-zinc-800 text-zinc-400 px-2 py-1 rounded text-xs font-mono">Python</span>
+                                <span class="bg-zinc-800 text-zinc-400 px-2 py-1 rounded text-xs font-mono">JS/TS</span>
+                                <span class="bg-zinc-800 text-zinc-400 px-2 py-1 rounded text-xs font-mono">Java</span>
+                                <span class="bg-zinc-800 text-zinc-400 px-2 py-1 rounded text-xs font-mono">C/C++</span>
+                                <span class="bg-zinc-800 text-zinc-400 px-2 py-1 rounded text-xs font-mono">Go</span>
+                                <span class="bg-zinc-800 text-zinc-400 px-2 py-1 rounded text-xs font-mono">Rust</span>
+                                <span class="bg-zinc-800 text-zinc-400 px-2 py-1 rounded text-xs font-mono">PHP</span>
+                                <span class="bg-teal-500/10 text-teal-500 px-2 py-1 rounded text-xs font-medium border border-teal-500/20">+ many more</span>
                             </div>
                         </div>
                     </div>
@@ -178,9 +182,33 @@
                     <span id="scanStatus" class="uppercase tracking-wider">IDLE</span>
                 </div>
                 <!-- Log Output -->
-                <div id="terminalOutput" class="terminal-body">
+                <div id="terminalOutput" class="terminal-body" style="height: 350px;">
                     <div class="log-line log-info">> System Init... OK</div>
                     <div class="log-line log-info">> Ready for analysis.</div>
+                </div>
+            </div>
+
+            <!-- DETAIL REPORT TABLE (Restored) -->
+            <div id="detailReport" class="hidden mt-6 bg-[#1a1a1a] border border-[#333] rounded-lg overflow-hidden animate-in fade-in duration-500">
+                <div class="bg-[#252526] px-4 py-3 border-b border-[#333] flex justify-between items-center">
+                    <h3 class="font-mono text-sm text-gray-400">DEEP ANALYSIS REPORT</h3>
+                    <button onclick="document.getElementById('detailReport').classList.add('hidden')" class="text-xs text-gray-500 hover:text-white">CLOSE</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-xs text-gray-500 uppercase font-mono border-b border-[#333]">
+                                <th class="p-3">Severity</th>
+                                <th class="p-3">Type</th>
+                                <th class="p-3">File</th>
+                                <th class="p-3">Line</th>
+                                <th class="p-3">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody id="findingsTableBody" class="text-sm font-mono text-gray-300">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -320,6 +348,9 @@ async function startRepoScan() {
     }
 
     term.innerHTML = ''; // Clear terminal
+    document.getElementById('findingsTableBody').innerHTML = ''; // Clear table
+    document.getElementById('detailReport').classList.add('hidden');
+    
     document.getElementById('scanStatus').innerText = "INITIALIZING...";
     document.getElementById('scanStatus').className = "text-teal-500 animate-pulse uppercase tracking-wider";
     
@@ -354,12 +385,6 @@ async function startRepoScan() {
 
         // Phase 2: Sequential Scan (The "Matrix" Effect)
         let issuesCount = 0;
-        
-        // We need to fetch the file list or just poll status. 
-        // For the "Visual" effect, we will poll the status endpoint which should ideally return the next file to scan
-        // But since the current backend might not support "Next File" API perfectly, let's simulate the loop 
-        // by calling the 'scan_next_file' endpoint repeatedly until done.
-        
         let processed = 0;
         let isComplete = false;
         
@@ -400,7 +425,9 @@ async function startRepoScan() {
                      findings.forEach(issue => {
                          const color = issue.severity === 'high' ? 'error' : (issue.severity === 'medium' ? 'warn' : 'info');
                          log(`  > [${issue.type}] ${issue.description || 'Issue detected'}`, color);
+                         addFindingRow(issue, fname);
                      });
+                     document.getElementById('detailReport').classList.remove('hidden');
                 }
                 
                 // Slight delay for visual effect if it's too fast
@@ -427,6 +454,32 @@ async function startRepoScan() {
     }
 }
 
+// --- TABLE HELPER ---
+function addFindingRow(issue, filename) {
+    const tbody = document.getElementById('findingsTableBody');
+    const tr = document.createElement('tr');
+    tr.className = "border-b border-[#333] hover:bg-[#2a2a2a] transition-colors";
+    
+    // Severity Color
+    let sevColor = "text-blue-400";
+    if(issue.severity === 'high' || issue.severity === 'critical') sevColor = "text-red-500";
+    if(issue.severity === 'medium') sevColor = "text-orange-400";
+    
+    // Line Number
+    let lineNum = '-';
+    if (issue.location && issue.location.line) lineNum = issue.location.line;
+    if (issue.line) lineNum = issue.line; // Fallback
+    
+    tr.innerHTML = `
+        <td class="p-3 ${sevColor} font-bold">${issue.severity.toUpperCase()}</td>
+        <td class="p-3 text-gray-300">${issue.type}</td>
+        <td class="p-3 text-gray-400 text-xs font-mono">${filename || '-'}</td>
+        <td class="p-3 text-teal-500 font-mono text-xs">${lineNum}</td>
+        <td class="p-3 text-gray-300 whitespace-pre-wrap">${issue.description || issue.reason}</td>
+    `;
+    tbody.appendChild(tr);
+}
+
 // --- RENDER LOGIC ---
 function renderResults(data) {
     log('Analysis Phase Complete.', 'success');
@@ -436,15 +489,22 @@ function renderResults(data) {
     // Stats Update
     document.getElementById('statIssues').innerText = data.findings ? data.findings.length : 0;
     
+    document.getElementById('findingsTableBody').innerHTML = '';
+    document.getElementById('detailReport').classList.add('hidden');
+    
     // Print Findings
     log('----------------------------------------', 'info');
     if (data.findings && data.findings.length > 0) {
+        document.getElementById('detailReport').classList.remove('hidden');
+        
         data.findings.forEach(f => {
             const isSnyk = f.source === 'snyk';
             const prefix = isSnyk ? '[SNYK]' : '';
             const type = isSnyk ? 'snyk' : (f.severity === 'high' ? 'error' : 'warn');
             
             log(`${prefix} [${f.severity.toUpperCase()}] ${f.type}: ${f.description || f.reason}`, type);
+            addFindingRow(f, data.filename);
+            
             if(f.location) {
                 log(`   @ ${f.location.file || 'line'}:${f.location.line}`, 'info');
             }
@@ -459,8 +519,52 @@ function renderResults(data) {
     }
 }
 
-function loadHistoryItem(id, type) {
-    log(`Loading history items is not fully implemented in this quick view. Please scan a file.`, 'warn');
+async function loadHistoryItem(id, type) {
+    // Clear State
+    term.innerHTML = '';
+    document.getElementById('findingsTableBody').innerHTML = '';
+    document.getElementById('detailReport').classList.add('hidden');
+    document.getElementById('scanStatus').innerText = "LOADING HISTORY...";
+    document.getElementById('scanStatus').className = "text-yellow-500 animate-pulse uppercase tracking-wider";
+    
+    log(`Fetching history for ${type} #${id}...`, 'info');
+    
+    try {
+        let url = '';
+        if (type === 'file') {
+            url = `/dashboard/get_result/${id}/`;
+        } else {
+             // Project status endpoint
+            url = `/dashboard/project/${id}/status/`;
+        }
+        
+        const res = await fetch(url);
+        if(!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+        
+        const data = await res.json();
+        
+        // Normalize Data for Render
+        // Project status returns slightly different keys
+        if(type === 'project') {
+             // Map project keys to render expectation
+             data.filename = data.project_name + " (Repo)";
+             data.findings = data.findings || [];
+             // Ensure findings have consistent structure if needed
+        } else {
+            // File data usually nested in 'result' key from get_scan_result endpoint
+            if (data.result) {
+                Object.assign(data, data.result); // Flatten
+            }
+        }
+        
+        renderResults(data);
+        log(`History loaded successfully.`, 'success');
+        
+    } catch (e) {
+        log(`Error loading history: ${e.message}`, 'error');
+        document.getElementById('scanStatus').innerText = "ERROR";
+        document.getElementById('scanStatus').className = "text-rose-500 uppercase tracking-wider";
+    }
 }
 </script>
 {% endblock %}
