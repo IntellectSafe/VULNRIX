@@ -39,6 +39,8 @@ def new_scan(request):
         phone = request.POST.get('phone', '').strip() or None
         domain = request.POST.get('domain', '').strip() or None
         ip = request.POST.get('ip', '').strip() or None
+        btc_address = request.POST.get('btc_address', '').strip() or None
+        ipfs_hash = request.POST.get('ipfs_hash', '').strip() or None
         social_platforms = request.POST.getlist('social_platforms')
         
         # ===== INTELLIGENT MERGE LOGIC =====
@@ -167,29 +169,37 @@ def new_scan(request):
                 intelx_results['name'] = intelx_service.search_name(name)
 
             # --- SPECIAL TYPES (BTC, IPFS, CIDR) ---
-            # We detect them from quick_value or fields if we had them.
-            # Since we don't have fields, we check if quick_value matches independently if it wasn't assigned.
-            # Or simpler: Scan 'quick_value' if it looks like one of these.
+            # Support both dedicated form fields and quick_value auto-detection
+            import re
             
-            q_val = quick_value.strip() if quick_value else ""
-            if q_val:
-                import re
-                # BTC
-                if re.match(r"^(1|3|bc1)[a-zA-Z0-9]{25,39}$", q_val):
-                     intelx_results['btc'] = intelx_service.search_btc(q_val)
-                     # Store in results metadata if helpful
-                     scan.social_handles = {'btc_query': q_val}
-                     scan.save()
-
-                # IPFS
-                elif q_val.startswith('Qm') and len(q_val) >= 46:
-                     intelx_results['ipfs'] = intelx_service.search_ipfs(q_val)
-                     scan.social_handles = {'ipfs_query': q_val}
-                     scan.save()
-                     
-                # CIDR (If not assigned to IP)
-                elif '/' in q_val and re.match(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{1,2}", q_val):
-                     intelx_results['cidr'] = intelx_service.search_cidr(q_val)
+            # BTC Address - from dedicated field or quick_value
+            btc_to_scan = btc_address
+            if not btc_to_scan and quick_value and re.match(r"^(1|3|bc1)[a-zA-Z0-9]{25,39}$", quick_value.strip()):
+                btc_to_scan = quick_value.strip()
+            if btc_to_scan:
+                intelx_results['btc'] = intelx_service.search_btc(btc_to_scan)
+                scan.social_handles = scan.social_handles or {}
+                scan.social_handles['btc_query'] = btc_to_scan
+                scan.save()
+            
+            # IPFS Hash - from dedicated field or quick_value
+            ipfs_to_scan = ipfs_hash
+            if not ipfs_to_scan and quick_value and quick_value.strip().startswith('Qm') and len(quick_value.strip()) >= 46:
+                ipfs_to_scan = quick_value.strip()
+            if ipfs_to_scan:
+                intelx_results['ipfs'] = intelx_service.search_ipfs(ipfs_to_scan)
+                scan.social_handles = scan.social_handles or {}
+                scan.social_handles['ipfs_query'] = ipfs_to_scan
+                scan.save()
+            
+            # CIDR - from IP field (if contains /) or quick_value  
+            cidr_to_scan = None
+            if ip and '/' in ip:
+                cidr_to_scan = ip
+            elif quick_value and '/' in quick_value and re.match(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{1,2}", quick_value.strip()):
+                cidr_to_scan = quick_value.strip()
+            if cidr_to_scan:
+                intelx_results['cidr'] = intelx_service.search_cidr(cidr_to_scan)
 
             # Web search (fallback/supplementary)
             search_results = search_engine.find_mentions(

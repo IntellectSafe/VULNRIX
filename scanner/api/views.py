@@ -68,8 +68,11 @@ def api_key_required(view_func):
             
         except Exception as e:
             logger.error(f"API auth error: {e}")
-            # Fall back to allowing request for now (development mode)
-            request.api_user = None
+            # Return auth error instead of allowing request through
+            return JsonResponse({
+                'error': 'Authentication service unavailable',
+                'code': 'AUTH_ERROR'
+            }, status=503)
         
         return view_func(request, *args, **kwargs)
     

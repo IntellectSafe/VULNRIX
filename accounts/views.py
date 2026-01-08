@@ -56,7 +56,7 @@ def login_view(request):
                 # If user is New (0 Scans) -> Docs (Tutorial)
                 from scanner.models import ScanHistory
                 if ScanHistory.objects.filter(user=user).exists():
-                    return redirect('scanner:dashboard')
+                    return redirect('vuln_scan:dashboard')  # Code Scanner
                 else:
                     return redirect('docs')
             else:
