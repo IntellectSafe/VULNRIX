@@ -105,5 +105,3 @@ gunicorn digitalshield.wsgi:application
 **GPLv2**
 GNU GENERAL PUBLIC LICENSE
 Version 2 License
-
-Y O L O   c o m m i t
