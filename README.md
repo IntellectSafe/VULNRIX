@@ -7,12 +7,14 @@
 ## Features
 
 ### 🛡️ Code/File Vulnerability Scanner
-- **Multi-mode** – Fast, Hybrid, or Deep AI analysis
-- **Repo Scan** – Clone and analyze public Git repositories (limit: 50 files max)
+- **Scan Modes:**
+  - **Fast** – Regex + Semantic analysis (no AI, instant results)
+  - **Hybrid** – Regex + AI Verification (2 AI providers validate findings)
+- **Repo Scan** – Clone and analyze public Git repositories (up to 500 files)
 - **Zip Scan** – Upload and scan ZIP archives of source code
-- **Detections** – SQLi, XSS, command injection, secrets
-- **VirusTotal** – File Malware scanning integration
-- **AI Malicious Detection** – Detects code-generated malware patterns
+- **Detections** – SQLi, XSS, command injection, hardcoded secrets, CSRF, and more
+- **VirusTotal** – File malware scanning integration
+- **AI Verification** – GROQ & Gemini confirm findings and add recommendations
 
 ### 🔍 Digital Footprint Scanner
 - **Email** – Breach checking, Dark Web monitoring
@@ -47,12 +49,17 @@ python manage.py runserver
 ## API Keys Required
 
 ```env
-# Core (Pick the ones you have)
+# AI Providers (for Hybrid mode - 2 keys recommended)
+GROQ_KEY=                # Primary AI (fast)
+GROQ2_API_KEY=           # Fallback AI 1
+GEMINI_API_KEY=          # Fallback AI 2
+GEMINI2_API_KEY=         # Fallback AI 3
+
+# OSINT APIs
 INTELX2_API_KEY=         # Primary OSINT (Darkweb, BTC, IPFS)
 INTELX_API_KEY=          # Fallback
 VIRUS_TOTAL_API_KEY=     # Malware scanning
 LEAKINSIGHT_API_KEY=     # Breach checking
-GROQ_KEY=                # AI scanning
 
 # Optional
 SHODAN_API_KEY=

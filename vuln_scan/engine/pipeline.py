@@ -202,77 +202,13 @@ class SecurityPipeline:
                     "reason": f"Hybrid scan: {plan.get('reasoning', 'Analysis complete')}"
                 }
 
-            # DEEP MODE: Full analysis but still memory-conscious
+
+            # Deep mode is deprecated - redirect to hybrid
             if mode == 'deep':
-                if not self.phase1_provider:
-                    return {
-                        "status": "ERROR",
-                        "error": "Deep mode requires LLM. Configure GEMINI_API_KEY.",
-                        "findings": semantic_findings[:10]
-                    }
-
-                self.logger.info("Phase 1: Planning...")
-                
-                # INTELLIGENT HINT SELECTION (Same as Hybrid)
-                def get_severity_weight(f):
-                    t = f.get('type', '').lower()
-                    if 'credential' in t or 'secret' in t or 'key' in t: return 3
-                    if 'sql' in t or 'command' in t or 'remote' in t or 'exec' in t: return 3
-                    if 'xss' in t or 'csrf' in t: return 2
-                    return 1
-                semantic_findings.sort(key=get_severity_weight, reverse=True)
-                
-                from collections import Counter
-                finding_counts = Counter([f.get('type', 'Unknown') for f in semantic_findings])
-                finding_summary = ", ".join([f"{k}: {v}" for k, v in finding_counts.items()])
-                
-                # Truncate code for LLM to save tokens/memory
-                truncated_code = code[:10000]
-                plan = self._run_phase1(truncated_code, structure, categories, semantic_findings[:15], finding_summary)
-                
-                if not isinstance(plan, dict):
-                    plan = {"risk_level": "UNKNOWN"}
-
-                # Only run Phase 2 if Phase 1 found something OR if we have local findings
-                # This ensures we don't skip deep analysis if regex caught something the LLM missed in the summary.
-                risk_level = plan.get("risk_level", "UNKNOWN")
-                has_local_findings = len(semantic_findings) > 0
-                
-                if risk_level in ["CRITICAL", "HIGH", "MEDIUM"] or has_local_findings:
-                    self.logger.info("Phase 2: Deep Analysis (Triggered by Risk Level or Local Findings)...")
-                    if not self.phase2_provider:
-                        self.phase2_provider = self.phase1_provider
-                    
-                    # Pass top 30 prioritized findings to Phase 2
-                    report = self._run_phase2(code, plan, semantic_findings[:30])
-                    
-                    if not isinstance(report, dict):
-                        report = {"status": "ERROR", "findings": []}
-                    
-                    # Merge regex findings with LLM findings?
-                    # NO: The user wants "barest minimum false positives" and "AI to scan".
-                    # We pass regex as hints to AI. If AI confirms them, they are in 'report'.
-                    # If AI ignores them, we trust the AI and drop them.
-                    
-                    llm_findings = report.get("findings", [])
-                    
-                    # Fallback: If AI returned NO findings but risk is HIGH, maybe we should keep regex?
-                    # But generally we trust the AI context window.
-                    
-                    return {
-                        "status": report.get("status", "UNKNOWN"),
-                        "findings": llm_findings, # ONLY return AI-verified findings
-                        "plan": plan,
-                        "ai_malicious_risk": ai_scan
-                    }
-                else:
-                    return {
-                        "status": "SAFE",
-                        "plan": plan,
-                        "findings": [], # If Phase 1 says SAFE, discard regex noise
-                        "ai_malicious_risk": ai_scan,
-                        "reason": "Phase 1 analysis determined code is safe."
-                    }
+                self.logger.warning("Deep mode deprecated, using hybrid instead.")
+                mode = 'hybrid'
+                # Re-run hybrid logic (code already handled above)
+                return self.scan_file(file_path, mode='hybrid')
 
             return {"status": "ERROR", "error": f"Unknown mode: {mode}"}
             

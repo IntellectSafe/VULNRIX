@@ -610,15 +610,8 @@ def start_repo_scan(request):
         # Discover files
         files_created = []
         
-        # Check Snyk Availability
-        from scanner.services.snyk_service import get_snyk_service
-        snyk = get_snyk_service()
-        has_snyk = snyk.is_configured()
-        
-        # Limit Logic
-        current_limit = 50
-        if has_snyk:
-            current_limit = 500 # Raise limit significantly if using Snyk
+        # File Limit: 500 (user tested 133 successfully)
+        current_limit = 500
             
         for root, _, files in os.walk(project_dir):
             for file in files:
@@ -639,79 +632,8 @@ def start_repo_scan(request):
             if len(files_created) >= current_limit:
                 break
         
-        # Check if we hit the limit (restored)
+        # Check if we hit the limit
         exceeded_limit = len(files_created) >= current_limit
-
-        # Enforce Scan Strategy: Snyk Batch ONLY for Large Repos (>50 files)
-        # User explicitly requested Local + AI only for small repos.
-        is_large_repo = len(files_created) > 50
-        
-        if has_snyk and is_large_repo:
-            try:
-                # BATCH CONTEXT SCAN (Whole Repo)
-                # Collect all file contents for Snyk
-                batch_files = []
-                
-                # Check total size before loading into memory to prevent OOM
-                total_batch_size = 0
-                MAX_BATCH_SIZE_MB = 8.0 # Safety limit for batch payload
-                
-                # Re-walk to read content (efficient enough for < 500 files)
-                for file_res in files_created:
-                    fpath = project_dir / Path(file_res.filename)
-                    try:
-                        fsize = fpath.stat().st_size
-                        if fsize > 1024 * 1024: # Skip individual large files > 1MB in batch
-                            continue
-                            
-                        if (total_batch_size + fsize) > (MAX_BATCH_SIZE_MB * 1024 * 1024):
-                            logger.warning("Batch payload limit reached, truncating Snyk Context.")
-                            break
-                            
-                        with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
-                            content = f.read()
-                            batch_files.append({
-                                'path': file_res.filename,
-                                'content': content
-                            })
-                            total_batch_size += fsize
-                    except Exception:
-                        continue
-
-                if batch_files:
-                    logger.info(f"Starting Batch Snyk Scan for {len(batch_files)} files...")
-                    # 1. SAST Scan (Code)
-                    snyk_results = snyk.analyze_batch(batch_files)
-                    
-                    # 2. SCA Scan (Dependencies) - Iterate Manifests found in batch
-                    # This is critical for finding parity (26 vs 52 issues)
-                    manifests = ['package.json', 'package-lock.json', 'requirements.txt', 'gemfile', 'gemfile.lock', 'go.mod', 'pom.xml', 'yarn.lock']
-                    
-                    for bfile in batch_files:
-                        fname = bfile['path'].split('/')[-1].lower()
-                        if fname in manifests:
-                             logger.info(f"Running SCA on {bfile['path']}...")
-                             sca_res = snyk.analyze_dependencies(bfile['content'], fname)
-                             if sca_res.get('status') == 'VULNERABLE':
-                                  sca_findings = sca_res.get('findings', [])
-                                  if snyk_results.get('findings') is None:
-                                       snyk_results['findings'] = []
-                                  
-                                  # Append unique SCA findings
-                                  snyk_results['findings'].extend(sca_findings)
-                                  snyk_results['status'] = 'VULNERABLE'
-                                  logger.info(f"Added {len(sca_findings)} SCA findings.")
-                    
-                    # Cache results to disk for scan_next_file to pick up
-                    if snyk_results.get('status') == 'VULNERABLE':
-                        import json
-                        cache_path = project_dir / f"snyk_batch_{project.id}.json"
-                        with open(cache_path, 'w') as f:
-                            json.dump(snyk_results, f)
-                        logger.info(f"Batch results cached to {cache_path}")
-            except Exception as batch_err:
-                 logger.error(f"Batch Scan Failed (Non-fatal): {batch_err}")
-                 # Continue to standard scan
 
         project.total_files = len(files_created)
         project.status = 'READY'
@@ -724,9 +646,6 @@ def start_repo_scan(request):
             "limit_exceeded": exceeded_limit,
             "max_files": current_limit
         }
-        
-        if has_snyk and is_large_repo:
-            response_data['warning'] = "Large Repository Detected. Deep Context Scan active (may be slow)."
             
         return JsonResponse(response_data)
         
@@ -797,103 +716,20 @@ def scan_next_file(request, project_id):
              code_content = ""
              file_size_mb = 0
 
-        # --- SNYK ANALYSIS ---
-        snyk_result = None
-        snyk_findings = []
-        snyk = None # Fix: Initialize to prevent UnboundLocalError
-        
-        try:
-            from scanner.services.snyk_service import get_snyk_service
-            snyk = get_snyk_service()
-            if snyk and snyk.is_configured():
-                # Map extension to language
-                ext = abs_path.suffix.lower()
-                lang_map = {
-                    '.py': 'python', '.js': 'javascript', '.ts': 'typescript',
-                    '.java': 'java', '.go': 'go', '.rb': 'ruby', '.php': 'php',
-                    '.c': 'c', '.cpp': 'cpp', '.rs': 'rust', '.cs': 'csharp'
-                }
-                language = lang_map.get(ext, 'python')
-                
-                # Check for Cached Batch Results first
-                import json
-                project_dir = Path(settings.MEDIA_ROOT) / 'scans' / str(project.id)
-                cache_path = project_dir / f"snyk_batch_{project.id}.json"
-                
-                cached_findings = None
-                if cache_path.exists():
-                     try:
-                         with open(cache_path, 'r') as f:
-                             batch_data = json.load(f)
-                             # Filter findings for this file
-                             # Snyk finding 'location' -> 'file': 'path/to/file'
-                             # next_file.filename is 'path/to/file' (relative)
-                             
-                             batch_findings = batch_data.get('findings', [])
-                             cached_findings = [
-                                 xf for xf in batch_findings 
-                                 if xf.get('location', {}).get('file') == next_file.filename
-                             ]
-                             # Assign source
-                             for f in cached_findings:
-                                 f['source'] = 'snyk_context'
-                     except Exception as e:
-                         logger.error(f"Cache read error: {e}")
-
-                if cached_findings is not None:
-                     snyk_findings = cached_findings
-                else:
-                    # Fallback to single file scan (if no batch or new file)
-                    # Run Snyk (SCA vs SAST)
-                    manifests = ['package.json', 'package-lock.json', 'requirements.txt', 'gemfile', 'gemfile.lock', 'go.mod', 'pom.xml', 'yarn.lock']
-                    if next_file.filename.lower() in manifests:
-                         # SCA Scan
-                         snyk_result = snyk.analyze_dependencies(code_content, next_file.filename)
-                         snyk_findings = snyk_result.get('findings', [])
-                         for f in snyk_findings:
-                             f['source'] = 'snyk_sca'
-                    else:
-                         # SAST Code Scan (Single)
-                         snyk_result = snyk.analyze_code(code_content, language, next_file.filename)
-                         snyk_findings = snyk_result.get('findings', [])
-                         for f in snyk_findings:
-                             f['source'] = 'snyk_code'
-        except Exception as snyk_err:
-            logger.warning(f"Snyk loop error: {snyk_err}")
-
-        # Determine Scan Strategy
+        # Determine Scan Strategy (Local Engine Only)
         scan_mode = request.POST.get('mode', 'hybrid')
         
-        # CRITICAL: For large repos (>50 files), if Snyk is active, SKIP local scan entirely.
-        is_large_repo = project.total_files > 50
-        skip_local = False
-        
-        # Strict Rule: Large Repo + Snyk Configured = Snyk Only (No AI/Local)
-        # Fix: Check if snyk exists before calling method (prevent AttributeError)
-        if is_large_repo and snyk and snyk.is_configured():
-             skip_local = True
-        
-        # Also skip if file is huge (>2MB) to prevent memory crashes
+        # Skip huge files (>2MB) to prevent memory crashes
         if file_size_mb > 2.0:
-             skip_local = True
-
-        if not skip_local:
-             # Run Local Pipeline
-             result = dispatcher.scan_file(str(abs_path), mode=scan_mode)
-             local_findings = result.get('findings', [])
-             
-             # Merge findings (Snyk first)
-             all_findings = snyk_findings + local_findings
-             
-             # Update result dict to include merged findings
-             result['findings'] = all_findings
+            result = {
+                'status': 'SKIPPED',
+                'risk_score': 0,
+                'findings': [],
+                'reason': 'File too large (>2MB)'
+            }
         else:
-             # Snyk Only Optimization
-             result = {
-                 'status': 'VULNERABLE' if snyk_findings else 'SAFE',
-                 'risk_score': 50 if snyk_findings else 0, # Rough estimate
-                 'findings': snyk_findings
-             }
+            # Run Local Pipeline (Regex + Semantic + AI Verification)
+            result = dispatcher.scan_file(str(abs_path), mode=scan_mode)
 
         # Update Result
         next_file.status = 'COMPLETED' if result.get('status') != 'ERROR' else 'ERROR'
