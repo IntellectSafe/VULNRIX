@@ -799,8 +799,8 @@ def project_status(request, project_id):
                         "location": finding.get('location', {}),
                         "file_id": f.id
                     })
-            else:
-                # Fallback for files with status but no detailed JSON
+            elif f.status != 'SAFE' and f.severity != 'SAFE':
+                # Fallback for files with status but no detailed JSON (Only if NOT SAFE)
                 findings_data.append({
                      "filename": f.filename,
                      "severity": f.severity,

@@ -521,7 +521,7 @@ function addFindingRow(issue, filename) {
         <td class="p-3 text-gray-400 text-xs font-mono align-top whitespace-nowrap" title="${filename}">${filename ? (filename.length > 20 ? filename.substr(0,17)+'...' : filename) : '-'}</td>
         <td class="p-3 text-teal-500 font-mono text-xs align-top">${lineNum}</td>
         <td class="p-3 text-gray-300 align-top">
-            <div class="mb-2">${issue.description || issue.reason}</div>
+            <div class="mb-2">${issue.description || issue.type || 'Potential vulnerability detected'}</div>
             ${fixHtml}
         </td>
     `;
