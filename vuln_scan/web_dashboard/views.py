@@ -793,7 +793,7 @@ def project_status(request, project_id):
                         "type": finding.get('type', 'Unknown'),
                         "risk_score": f.risk_score,
                         "status": f.status,
-                        "line": finding.get('line', '-'),
+                        "line": finding.get('line', finding.get('location', {}).get('line', '-')),
                         "description": finding.get('description', ''),
                         "recommendation": finding.get('recommendation', ''),
                         "location": finding.get('location', {}),

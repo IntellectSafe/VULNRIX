@@ -504,7 +504,7 @@ function addFindingRow(issue, filename) {
     // Line Number
     let lineNum = '-';
     if (issue.location && issue.location.line) lineNum = issue.location.line;
-    if (issue.line) lineNum = issue.line; // Fallback
+    if (issue.line && issue.line !== '-') lineNum = issue.line; // Fallback only if valid
     
     // Remediation / Fix
     let fixHtml = '';
