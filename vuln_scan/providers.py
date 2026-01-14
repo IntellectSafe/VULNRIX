@@ -206,6 +206,7 @@ class GrokProvider(LLMProvider):
             "model": self.model,
             "messages": [{"role": "user", "content": content}],
             "temperature": 0.7
+            "max_tokens": 4096
         }
         
         try:
@@ -216,7 +217,7 @@ class GrokProvider(LLMProvider):
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json"
                 },
-                timeout=60
+                timeout=120
             )
             resp.raise_for_status()
             data = resp.json()
@@ -237,9 +238,9 @@ def load_provider(name: str) -> LLMProvider:
     
     if name == "gemini":
         return GeminiProvider()
-    if name == "groq":
+    elif name == "groq":
         return GroqProvider()
-    if name == "grok":
+    elif name == "grok":
         return GrokProvider()
     
     raise ValueError(f"Unknown provider: {name}")
