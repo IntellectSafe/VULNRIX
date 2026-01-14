@@ -310,26 +310,10 @@ def dashboard(request):
             logger.info(f"[VULNRIX] Starting pipeline scan...")
             start_time = time.time()
             
-            # --- SNYK FIRST-PASS ANALYSIS ---
-            snyk_result = None
-            try:
-                from scanner.services.snyk_service import get_snyk_service
-                snyk = get_snyk_service()
-                if snyk.is_configured():
-                    logger.info("[VULNRIX] Running Snyk first-pass analysis...")
-                    # Determine language from extension
-                    lang_map = {
-                        '.py': 'python', '.js': 'javascript', '.ts': 'typescript',
-                        '.java': 'java', '.go': 'go', '.rb': 'ruby', '.php': 'php',
-                        '.c': 'c', '.cpp': 'cpp', '.rs': 'rust', '.cs': 'csharp'
-                    }
-                    language = lang_map.get(ext.lower(), 'python')
-                    snyk_result = snyk.analyze_code(code, language, filename)
-                    logger.info(f"[VULNRIX] Snyk analysis: {snyk_result.get('status', 'N/A')}")
-                else:
-                    logger.info("[VULNRIX] Snyk not configured, skipping first-pass")
-            except Exception as snyk_err:
-                logger.warning(f"[VULNRIX] Snyk analysis failed (non-blocking): {snyk_err}")
+            # --- SNYK REMOVED (Local Engine Only) ---
+            # Snyk service deprecated in favor of hybrid local pipeline
+            logger.info("[VULNRIX] Starting pipeline scan (Local Engine)...")
+
             
             # --- LOCAL PIPELINE ANALYSIS ---
             result = pipeline.scan_file(tmp_path, mode=mode)
