@@ -5,7 +5,7 @@ Fixed with auto-model discovery for Gemini
 Set your API keys as environment variables:
     GOOGLE_API_KEY                  - for Gemini
     GROQ_KEY                        - for Groq
-    GROK_KEY                        - for grok
+    GROK_KEY                        - for Grok
 """
 
 import os
