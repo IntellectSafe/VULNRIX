@@ -250,7 +250,9 @@ class GrokProvider(LLMProvider):
                 return choices[0].get("message", {}).get("content", "No response")
             
             return f"Unexpected response: {json.dumps(data)[:300]}"
-        
+            
+        except requests.exceptions.HTTPError as e:
+            return f"API Error {resp.status_code}: {resp.text[:300]}
         except Exception as e:
             return f"Grok API Error: {str(e)}"
 
