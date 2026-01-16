@@ -228,7 +228,8 @@ class GrokProvider(LLMProvider):
         payload = {
             "model": self.model,
             "messages": messages,
-            "temperature": 0.7
+            "temperature": 0.7,
+             "max_tokens": 4096
         }
         
         try:
