@@ -252,7 +252,7 @@ class GrokProvider(LLMProvider):
             return f"Unexpected response: {json.dumps(data)[:300]}"
             
         except requests.exceptions.HTTPError as e:
-            return f"API Error {resp.status_code}: {resp.text[:300]}
+            return f"API Error {resp.status_code}: {resp.text[:300]}"
         except Exception as e:
             return f"Grok API Error: {str(e)}"
 
