@@ -21,9 +21,11 @@ from engine.ai_malicious_detection import AIMaliciousDetector
 
 # Try to import providers, handle failure gracefully
 try:
-    from providers import load_provider, GeminiProvider, GroqProvider, OpenAIProvider, ClaudeProvider
+    # Use relative import from parent package
+    from ..providers import load_provider, GeminiProvider, GroqProvider, GrokProvider
     HAS_PROVIDERS = True
-except ImportError:
+except ImportError as e:
+    print(f"[PIPELINE] Provider import failed: {e}")
     HAS_PROVIDERS = False
 
 class SecurityPipeline:
@@ -49,43 +51,49 @@ class SecurityPipeline:
         # Load Balancing: Support multiple keys for high throughput
         import random
         
-        # Groq Keys
+        # Groq Keys (fastest)
         groq_keys = [k for k in [os.getenv("GROQ_KEY"), os.getenv("GROQ2_API_KEY")] if k]
         if groq_keys:
             selected_key = random.choice(groq_keys)
             self.logger.info(f"Using Groq Key (one of {len(groq_keys)})")
             return GroqProvider(api_key=selected_key)
 
-        # OpenAI
-        if os.getenv("OPENAI_API_KEY"):
-            return OpenAIProvider(model="gpt-3.5-turbo")
+        # Grok (X.AI)
+        if os.getenv("GROK_API_KEY"):
+            self.logger.info("Using Grok provider")
+            return GrokProvider()
 
-        # Gemini Keys
+        # Gemini Keys (fallback)
         gemini_keys = [k for k in [os.getenv("GEMINI_API_KEY"), os.getenv("GEMINI2_API_KEY")] if k]
         if gemini_keys:
             selected_key = random.choice(gemini_keys)
             self.logger.info(f"Using Gemini Key (one of {len(gemini_keys)})")
-            return GeminiProvider(api_key=selected_key, model="gemini-1.5-flash")
+            return GeminiProvider(api_key=selected_key)
             
         return None
 
     def _get_phase2_provider(self):
-        """Get strong provider for Phase 2 (Gemini/Claude/GPT-4)"""
+        """Get strong provider for Phase 2 (Gemini preferred)"""
         if not HAS_PROVIDERS: return None
         
         import random
         
-        # Gemini Keys (Pro model)
+        # Gemini Keys (best for deep analysis)
         gemini_keys = [k for k in [os.getenv("GEMINI_API_KEY"), os.getenv("GEMINI2_API_KEY")] if k]
         if gemini_keys:
             selected_key = random.choice(gemini_keys)
             self.logger.info(f"Using Gemini Key for Phase 2 (one of {len(gemini_keys)})")
-            return GeminiProvider(api_key=selected_key, model="gemini-1.5-pro")
+            return GeminiProvider(api_key=selected_key)
 
-        if os.getenv("ANTHROPIC_API_KEY"):
-            return ClaudeProvider()
-        elif os.getenv("OPENAI_API_KEY"):
-            return OpenAIProvider(model="gpt-4")
+        # Grok fallback
+        if os.getenv("GROK_API_KEY"):
+            return GrokProvider()
+        
+        # Groq fallback
+        groq_keys = [k for k in [os.getenv("GROQ_KEY"), os.getenv("GROQ2_API_KEY")] if k]
+        if groq_keys:
+            return GroqProvider(api_key=random.choice(groq_keys))
+            
         return None
 
     def scan_file(self, file_path: str, mode: str = "hybrid") -> Dict[str, Any]:
