@@ -79,11 +79,14 @@ def get_pipeline():
     global _pipeline
     if _pipeline is None:
         try:
-            from engine.pipeline import SecurityPipeline
+            # Fix: Use full module path for Django context
+            from vuln_scan.engine.pipeline import SecurityPipeline
             _pipeline = SecurityPipeline()
-            logger.info("SecurityPipeline initialized successfully")
+            logger.info("[VULNRIX] SecurityPipeline initialized successfully (AI verification enabled)")
         except Exception as e:
-            logger.error(f"Failed to initialize SecurityPipeline: {e}")
+            logger.error(f"[VULNRIX] Failed to initialize SecurityPipeline: {e}")
+            import traceback
+            traceback.print_exc()
             _pipeline = None
     return _pipeline
 
