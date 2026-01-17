@@ -10,10 +10,7 @@ try:
 except ImportError:
     pass
 
-try:
-    from .scanner import scan_file, scan_path
-except ImportError:
-    pass
+
 
 try:
     from .providers import load_provider, list_providers
