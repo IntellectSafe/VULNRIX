@@ -31,13 +31,16 @@ def check_and_increment_usage(user) -> bool:
     usage, created = ScanUsage.objects.get_or_create(user=user)
     
     # Reset if it's a new day
-    usage.reset_if_new_day()
+    now = timezone.now()
+    if usage.last_reset.date() < now.date():
+        usage.daily_scan_count = 0
+        usage.last_reset = now
     
-    if usage.scans_today >= MAX_SCANS_PER_DAY:
+    if usage.daily_scan_count >= MAX_SCANS_PER_DAY:
         raise DailyQuotaExceeded(f"Daily limit of {MAX_SCANS_PER_DAY} scans reached. Please try again tomorrow.")
         
-    # Increment usage (optimistic, caller should roll back if scan fails immediately)
-    usage.scans_today += 1
+    # Increment usage
+    usage.daily_scan_count += 1
     usage.save()
     return True
 

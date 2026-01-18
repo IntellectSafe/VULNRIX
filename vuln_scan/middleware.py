@@ -19,9 +19,9 @@ class SecurityHeadersMiddleware:
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://unpkg.com; "
-            "font-src 'self' https://fonts.gstatic.com; "
+            "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
             "img-src 'self' data: https: blob:; "
-            "connect-src 'self' https://api.openai.com https://generativelanguage.googleapis.com; "  # Allow AI APIs if frontend calls them (unlikely, usually backend)
+            "connect-src 'self' https://api.openai.com https://generativelanguage.googleapis.com; "  # Allow AI APIs if frontend calls them
             "frame-ancestors 'none'; "
             "object-src 'none';"
         )
@@ -35,12 +35,9 @@ class SecurityHeadersMiddleware:
 
         # 4. Cross-Origin Policies (Low Severity) - Isolate the app
         # COOP: Same-origin isolation
-        response['Cross-Origin-Opener-Policy'] = "same-origin"
-        # COEP: Require CORP (Might break external images if not handled, keep credentialless or unsafe-none if issues arise)
-        # Using 'credentialless' is safer for loading external resources without CORS headers
-        # But 'require-corp' was recommended. Let's try 'same-origin' for CORP first.
-        response['Cross-Origin-Embedder-Policy'] = "require-corp" 
-        response['Cross-Origin-Resource-Policy'] = "same-origin"
+        # COEP: unsafe-none (Relaxed to allow CDNs like cdn.tailwindcss.com/cdnjs w/o CORP headers)
+        response['Cross-Origin-Embedder-Policy'] = "unsafe-none" 
+        response['Cross-Origin-Resource-Policy'] = "cross-origin"
 
         # 5. Server Header Suppression (Info Disclosure)
         # Note: WSGI servers might overwrite this, but we try.

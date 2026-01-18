@@ -17,7 +17,10 @@ env = environ.Env(
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY', default=os.urandom(24).hex())
+SECRET_KEY = env('SECRET_KEY', default='django-insecure-dev-key-do-not-use-in-production')
+
+# Force fresh session cookie to fix "Session Data Corrupted" loop
+SESSION_COOKIE_NAME = 'vulnrix_session_id'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG', default=True)
@@ -59,7 +62,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'vuln_scan.middleware.SecurityHeadersMiddleware', # Custom Hardening
+    # 'vuln_scan.middleware.SecurityHeadersMiddleware', # DISABLED: Causing Session/UI issues
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
