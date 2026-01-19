@@ -183,7 +183,12 @@
                     
                     <!-- GITHUB APP CONNECT -->
                     <div id="panel-github" class="hidden">
-                        <div class="flex flex-col items-center text-center py-6">
+                        <div id="github-loading" class="flex items-center justify-center py-8">
+                            <i class="fas fa-spinner fa-spin text-2xl text-muted"></i>
+                        </div>
+                        
+                        <!-- Not Connected State -->
+                        <div id="github-not-connected" class="hidden flex flex-col items-center text-center py-6">
                             <div class="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mb-4 border border-zinc-700">
                                 <i class="fab fa-github text-4xl text-white"></i>
                             </div>
@@ -192,32 +197,30 @@
                                 Install the VULNRIX GitHub App to enable automatic PR security reviews, 
                                 push-triggered scans, and AI-powered dependency fix PRs.
                             </p>
-                            
-                            <div class="flex flex-col gap-3 w-full max-w-xs">
+                            <a href="https://github.com/apps/vulnrix/installations/new" 
+                               target="_blank"
+                               class="btn bg-white text-black hover:bg-zinc-200 font-medium px-6 py-3 rounded-lg transition-all flex items-center justify-center gap-2">
+                                <i class="fab fa-github"></i>
+                                Install VULNRIX App
+                            </a>
+                        </div>
+                        
+                        <!-- Connected State -->
+                        <div id="github-connected" class="hidden">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold flex items-center gap-2">
+                                    <i class="fas fa-check-circle text-green-500"></i>
+                                    Connected Repositories
+                                </h3>
                                 <a href="https://github.com/apps/vulnrix/installations/new" 
                                    target="_blank"
-                                   class="btn bg-white text-black hover:bg-zinc-200 font-medium px-6 py-3 rounded-lg transition-all flex items-center justify-center gap-2">
-                                    <i class="fab fa-github"></i>
-                                    Install VULNRIX App
+                                   class="text-xs text-teal-500 hover:underline">
+                                    + Add More Repos
                                 </a>
-                                
-                                <div class="text-xs text-muted mt-2">
-                                    <p class="mb-2">After installation, VULNRIX will:</p>
-                                    <ul class="text-left space-y-1">
-                                        <li class="flex items-center gap-2">
-                                            <i class="fas fa-check text-green-500 text-xs"></i>
-                                            <span>Review PRs for security issues</span>
-                                        </li>
-                                        <li class="flex items-center gap-2">
-                                            <i class="fas fa-check text-green-500 text-xs"></i>
-                                            <span>Scan code on every push</span>
-                                        </li>
-                                        <li class="flex items-center gap-2">
-                                            <i class="fas fa-check text-green-500 text-xs"></i>
-                                            <span>Create PRs to fix vulnerable deps</span>
-                                        </li>
-                                    </ul>
-                                </div>
+                            </div>
+                            
+                            <div id="github-repos-list" class="space-y-2 max-h-64 overflow-y-auto">
+                                <!-- Repos loaded dynamically -->
                             </div>
                         </div>
                     </div>
@@ -331,6 +334,118 @@ function switchTab(tab) {
     });
     const btn = document.getElementById('tab-' + tab);
     btn.className = "flex-1 py-3 text-sm font-medium border-b-2 border-teal-500 text-teal-500 transition-colors";
+    
+    // Load GitHub repos when tab is selected
+    if (tab === 'github') {
+        loadGitHubRepos();
+    }
+}
+
+// GitHub Repos Loading
+async function loadGitHubRepos() {
+    const loading = document.getElementById('github-loading');
+    const notConnected = document.getElementById('github-not-connected');
+    const connected = document.getElementById('github-connected');
+    const reposList = document.getElementById('github-repos-list');
+    
+    loading.classList.remove('hidden');
+    notConnected.classList.add('hidden');
+    connected.classList.add('hidden');
+    
+    try {
+        const response = await fetch('/github/api/repos/');
+        const data = await response.json();
+        
+        loading.classList.add('hidden');
+        
+        if (!data.connected || data.repos.length === 0) {
+            notConnected.classList.remove('hidden');
+            return;
+        }
+        
+        connected.classList.remove('hidden');
+        reposList.innerHTML = data.repos.map(repo => `
+            <div class="flex items-center justify-between p-3 bg-zinc-900 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors">
+                <div class="flex items-center gap-3">
+                    <i class="fab fa-github text-lg text-zinc-400"></i>
+                    <div>
+                        <div class="font-medium text-sm">${repo.full_name}</div>
+                        <div class="text-xs text-muted">${repo.private ? '🔒 Private' : '🌐 Public'}</div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="scanGitHubRepo('${repo.full_name}', ${repo.installation_id})" 
+                            class="text-xs bg-teal-600 hover:bg-teal-700 px-3 py-1.5 rounded transition-colors">
+                        <i class="fas fa-search mr-1"></i> Scan
+                    </button>
+                    <button onclick="autoFixRepo('${repo.full_name}', ${repo.installation_id})" 
+                            class="text-xs bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded transition-colors">
+                        <i class="fas fa-wrench mr-1"></i> Auto-Fix
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        loading.classList.add('hidden');
+        notConnected.classList.remove('hidden');
+        console.error('Failed to load repos:', error);
+    }
+}
+
+// Scan GitHub Repo (via installed app)
+async function scanGitHubRepo(repoFullName, installationId) {
+    log(`Starting scan for ${repoFullName}...`, 'info');
+    switchTab('file'); // Switch to terminal view
+    
+    try {
+        const response = await fetch('/github/api/scan/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                repo_full_name: repoFullName,
+                installation_id: installationId
+            })
+        });
+        
+        const data = await response.json();
+        log(data.message || 'Scan initiated', data.error ? 'error' : 'success');
+    } catch (error) {
+        log(`Error: ${error.message}`, 'error');
+    }
+}
+
+// Auto-Fix Repo Dependencies
+async function autoFixRepo(repoFullName, installationId) {
+    log(`Creating fix PR for ${repoFullName}...`, 'info');
+    
+    try {
+        const response = await fetch('/github/api/auto-fix/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                repo_full_name: repoFullName,
+                installation_id: installationId,
+                findings: []  // Would pass SCA findings here
+            })
+        });
+        
+        const data = await response.json();
+        if (data.pr_url) {
+            log(`✅ Fix PR created: ${data.pr_url}`, 'success');
+            window.open(data.pr_url, '_blank');
+        } else {
+            log(data.message || 'Auto-fix completed', data.error ? 'error' : 'info');
+        }
+    } catch (error) {
+        log(`Error: ${error.message}`, 'error');
+    }
 }
 
 // Mode Logic

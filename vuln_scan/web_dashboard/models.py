@@ -132,3 +132,18 @@ class ScanFileResult(models.Model):
             return json.loads(self.findings_json)
         except:
             return []
+
+
+class GitHubInstallation(models.Model):
+    """
+    Tracks GitHub App installations for users.
+    Enables fetching repos and creating fix PRs.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='github_installations')
+    installation_id = models.BigIntegerField(unique=True)
+    account_login = models.CharField(max_length=255)  # GitHub username/org
+    account_type = models.CharField(max_length=50, default='User')  # User or Organization
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.account_login} (ID: {self.installation_id})"

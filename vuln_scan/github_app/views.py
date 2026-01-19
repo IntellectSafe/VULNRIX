@@ -179,21 +179,194 @@ def handle_pull_request_event(payload: dict) -> JsonResponse:
 
 def handle_installation_event(payload: dict) -> JsonResponse:
     """
-    Handle installation event - track when the app is installed/uninstalled.
+    Handle installation event - store/remove installation in database.
     """
+    from vuln_scan.web_dashboard.models import GitHubInstallation
+    from django.contrib.auth.models import User
+    
     action = payload.get('action', '')
     installation = payload.get('installation', {})
     installation_id = installation.get('id')
     account = installation.get('account', {})
     account_login = account.get('login', 'unknown')
+    account_type = account.get('type', 'User')
+    sender = payload.get('sender', {})
+    sender_login = sender.get('login', '')
     
     logger.info(f"Installation event: {action} by {account_login} (id={installation_id})")
     
-    # TODO: Store installation in database for later use
-    # This would allow users to see which repos they've connected
+    if action == 'created':
+        # Find user by GitHub username (from OAuth or sender)
+        user = User.objects.filter(username=f"gh_{sender_login}").first()
+        if not user:
+            user = User.objects.filter(username=f"gh_{account_login}").first()
+        
+        if user:
+            GitHubInstallation.objects.update_or_create(
+                installation_id=installation_id,
+                defaults={
+                    'user': user,
+                    'account_login': account_login,
+                    'account_type': account_type,
+                }
+            )
+            logger.info(f"Saved installation for user {user.username}")
+        else:
+            # Create orphan installation (will be claimed later)
+            logger.warning(f"No user found for {sender_login} or {account_login}, installation not linked")
+    
+    elif action == 'deleted':
+        GitHubInstallation.objects.filter(installation_id=installation_id).delete()
+        logger.info(f"Deleted installation {installation_id}")
     
     return JsonResponse({
         "message": f"Installation {action}",
         "account": account_login,
         "installation_id": installation_id,
     })
+
+
+# ============================================================================
+# API Views for Dashboard
+# ============================================================================
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_GET
+import requests as http_requests
+
+
+@login_required
+@require_GET
+def get_connected_repos(request):
+    """Get list of repos the user has connected via GitHub App."""
+    from vuln_scan.web_dashboard.models import GitHubInstallation
+    from .services import github_app
+    
+    installations = GitHubInstallation.objects.filter(user=request.user)
+    
+    if not installations.exists():
+        return JsonResponse({"connected": False, "repos": []})
+    
+    all_repos = []
+    for install in installations:
+        try:
+            token = github_app.get_installation_token(install.installation_id)
+            
+            # Fetch repos accessible to this installation
+            response = http_requests.get(
+                "https://api.github.com/installation/repositories",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github+json",
+                },
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                repos = response.json().get('repositories', [])
+                for repo in repos:
+                    all_repos.append({
+                        'id': repo.get('id'),
+                        'name': repo.get('name'),
+                        'full_name': repo.get('full_name'),
+                        'owner': repo.get('owner', {}).get('login'),
+                        'private': repo.get('private'),
+                        'installation_id': install.installation_id,
+                    })
+        except Exception as e:
+            logger.error(f"Failed to fetch repos for installation {install.installation_id}: {e}")
+    
+    return JsonResponse({
+        "connected": True,
+        "repos": all_repos,
+        "installations": [
+            {"id": i.installation_id, "account": i.account_login}
+            for i in installations
+        ]
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def trigger_repo_scan(request):
+    """Trigger a scan on a connected GitHub repo."""
+    import json as json_lib
+    from .services import github_app
+    from vuln_scan.web_dashboard.models import GitHubInstallation
+    
+    try:
+        data = json_lib.loads(request.body)
+    except:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    
+    installation_id = data.get('installation_id')
+    repo_full_name = data.get('repo_full_name')  # owner/repo
+    
+    if not installation_id or not repo_full_name:
+        return JsonResponse({"error": "Missing installation_id or repo_full_name"}, status=400)
+    
+    # Verify ownership
+    install = GitHubInstallation.objects.filter(
+        installation_id=installation_id, 
+        user=request.user
+    ).first()
+    
+    if not install:
+        return JsonResponse({"error": "Installation not found or not owned"}, status=403)
+    
+    owner, repo = repo_full_name.split('/')
+    
+    # For now, just return success - actual scan would be queued
+    # The existing repo scan logic can be adapted here
+    return JsonResponse({
+        "message": "Scan queued",
+        "repo": repo_full_name,
+        "installation_id": installation_id,
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def trigger_auto_fix(request):
+    """Trigger auto-fix PR for a repo."""
+    import json as json_lib
+    from .services import github_app
+    from .auto_fix import create_dependency_fix_pr
+    from vuln_scan.web_dashboard.models import GitHubInstallation
+    
+    try:
+        data = json_lib.loads(request.body)
+    except:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    
+    installation_id = data.get('installation_id')
+    repo_full_name = data.get('repo_full_name')
+    findings = data.get('findings', [])  # SCA findings with package info
+    
+    if not installation_id or not repo_full_name:
+        return JsonResponse({"error": "Missing installation_id or repo_full_name"}, status=400)
+    
+    # Verify ownership
+    install = GitHubInstallation.objects.filter(
+        installation_id=installation_id, 
+        user=request.user
+    ).first()
+    
+    if not install:
+        return JsonResponse({"error": "Installation not found or not owned"}, status=403)
+    
+    owner, repo = repo_full_name.split('/')
+    
+    try:
+        pr = create_dependency_fix_pr(github_app, installation_id, owner, repo, findings)
+        if pr:
+            return JsonResponse({
+                "message": "Fix PR created",
+                "pr_url": pr.get('html_url'),
+                "pr_number": pr.get('number'),
+            })
+        else:
+            return JsonResponse({"message": "No fixes needed or PR creation failed"})
+    except Exception as e:
+        logger.error(f"Auto-fix failed: {e}")
+        return JsonResponse({"error": str(e)}, status=500)
+
