@@ -134,6 +134,53 @@ def github_callback(request):
     # Login the user
     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
     
+    # =========================================================================
+    # SYNC INSTALLATIONS
+    # Fetch user's installations using the OAuth token to ensure DB is in sync
+    # =========================================================================
+    try:
+        from vuln_scan.web_dashboard.models import GitHubInstallation
+        
+        installations_response = requests.get(
+            "https://api.github.com/user/installations",
+            headers=headers,  # Includes OAuth token
+            timeout=10
+        )
+        
+        if installations_response.status_code == 200:
+            installations_data = installations_response.json()
+            # The structure is usually {"total_count": N, "installations": [...]}
+            install_list = installations_data.get('installations', [])
+            
+            current_ids = []
+            for install in install_list:
+                inst_id = install.get('id')
+                account_login = install.get('account', {}).get('login')
+                account_type = install.get('account', {}).get('type', 'User')
+                
+                # Check if this app installation belongs to our app 
+                # (via app_id matching if needed, but endpoint returns ONLY our app installs)
+                
+                GitHubInstallation.objects.update_or_create(
+                    installation_id=inst_id,
+                    defaults={
+                        'user': user,
+                        'account_login': account_login,
+                        'account_type': account_type
+                    }
+                )
+                current_ids.append(inst_id)
+                logger.info(f"Synced installation {inst_id} for {user.username}")
+                
+            # Optional: Remove stale installations?
+            # GitHubInstallation.objects.filter(user=user).exclude(installation_id__in=current_ids).delete()
+            
+        else:
+            logger.warning(f"Failed to sync installations: {installations_response.status_code}")
+            
+    except Exception as e:
+        logger.error(f"Error syncing installations: {e}")
+    
     # Redirect to dashboard
     next_url = request.GET.get('next', '/dashboard/')
     return redirect(next_url)
