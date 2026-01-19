@@ -23,12 +23,19 @@ class GitHubAppService:
     
     @property
     def private_key(self):
-        """Load private key from file (lazy)."""
+        """Load private key from env var or file (lazy)."""
         if self._private_key is None:
-            if not self.private_key_path:
-                raise ValueError("GITHUB_PRIVATE_KEY_PATH not set")
+            # Try environment variable first (for production/Render)
+            env_key = os.environ.get('GITHUB_PRIVATE_KEY')
+            if env_key:
+                # Handle newlines that might be escaped in env var
+                self._private_key = env_key.replace('\\n', '\n')
+                return self._private_key
             
-            # Try absolute path first, then relative to BASE_DIR
+            # Fallback to file (for local development)
+            if not self.private_key_path:
+                raise ValueError("GITHUB_PRIVATE_KEY or GITHUB_PRIVATE_KEY_PATH not set")
+            
             key_path = Path(self.private_key_path)
             if not key_path.is_absolute():
                 from django.conf import settings
