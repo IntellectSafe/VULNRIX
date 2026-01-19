@@ -24,6 +24,7 @@ urlpatterns = [
     
     path('accounts/', include('accounts.urls')),
     path('vuln-node/', include('vuln_scan.nodes.urls')),
+    path('github/', include('vuln_scan.github_app.urls')),  # GitHub App Webhook
     # REST API v1
     path('api/v1/', include('scanner.api.urls')),
 ]
