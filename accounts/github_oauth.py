@@ -181,6 +181,6 @@ def github_callback(request):
     except Exception as e:
         logger.error(f"Error syncing installations: {e}")
     
-    # Redirect to dashboard
-    next_url = request.GET.get('next', '/dashboard/')
+    # Redirect to new GitHub dashboard
+    next_url = request.GET.get('next', '/github/dashboard/')
     return redirect(next_url)
