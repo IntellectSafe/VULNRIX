@@ -59,59 +59,74 @@
         
         {% else %}
         <!-- Connected State -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="space-y-4">
+            <!-- Add More Header -->
+            <div class="flex items-center justify-between mb-2 px-2">
+                <h3 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Repositories</h3>
+                <a href="https://github.com/apps/vulnrix/installations/new" target="_blank" 
+                   class="text-xs text-teal-500 hover:text-teal-400 hover:underline flex items-center gap-1">
+                    <i class="fas fa-plus"></i> Add Repositories
+                </a>
+            </div>
+
             {% for repo in repos %}
-            <div class="card bg-zinc-900/40 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-700 transition-all group">
-                <div class="p-6">
-                    <div class="flex items-start justify-between mb-4">
-                        <div class="flex items-center gap-3">
-                            <i class="fab fa-github text-xl text-zinc-400 group-hover:text-white transition-colors"></i>
-                            <div>
-                                <h3 class="font-semibold text-zinc-200 group-hover:text-teal-400 transition-colors">{{ repo.full_name }}</h3>
-                                <span class="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
-                                    {{ repo.private|yesno:"Private,Public" }}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="text-xs text-zinc-500 font-mono">
-                            ID: {{ repo.id }}
-                        </div>
+            <div class="flex flex-col md:flex-row md:items-center justify-between p-4 bg-zinc-900/40 border border-zinc-800 rounded-lg hover:border-zinc-700 transition-all group gap-4">
+                
+                <!-- Repo Info -->
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center border border-zinc-800 group-hover:border-zinc-600 transition-colors">
+                        <i class="fab fa-github text-xl text-zinc-400 group-hover:text-white"></i>
                     </div>
-                    
-                    <div class="space-y-3 mt-6">
-                        <button data-action="scan" 
-                                data-repo="{{ repo.full_name }}" 
-                                data-id="{{ repo.installation_id }}"
-                                class="w-full py-2 px-4 rounded bg-teal-600/10 text-teal-500 hover:bg-teal-600 hover:text-white border border-teal-600/20 hover:border-teal-500 transition-all text-sm font-medium flex items-center justify-center gap-2">
-                            <i class="fas fa-radar"></i> Trigger Scan
-                        </button>
-                        
-                        <button data-action="autofix"
-                                data-repo="{{ repo.full_name }}" 
-                                data-id="{{ repo.installation_id }}"
-                                class="w-full py-2 px-4 rounded bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white border border-zinc-700 transition-all text-sm font-medium flex items-center justify-center gap-2">
-                            <i class="fas fa-wrench"></i> Check & Fix Deps
-                        </button>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-semibold text-zinc-200 group-hover:text-teal-400 transition-colors text-lg">
+                                <a href="https://github.com/{{ repo.full_name }}" target="_blank" class="hover:underline">
+                                    {{ repo.full_name }}
+                                </a>
+                            </h3>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500 border border-zinc-700 uppercase tracking-wide">
+                                {{ repo.private|yesno:"Private,Public" }}
+                            </span>
+                        </div>
+                        <div class="text-xs text-zinc-500 font-mono mt-0.5">
+                            ID: {{ repo.id }} • Install: {{ repo.installation_id }}
+                        </div>
                     </div>
                 </div>
                 
-                <div class="bg-black/20 px-6 py-3 border-t border-zinc-800 flex justify-between items-center text-xs text-zinc-500">
-                    <span>Installation: {{ repo.installation_id }}</span>
-                    <a href="https://github.com/{{ repo.full_name }}" target="_blank" class="hover:text-white">
-                        View on GitHub <i class="fas fa-external-link-alt ml-1"></i>
+                <!-- Actions -->
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <button data-action="scan" 
+                            data-repo="{{ repo.full_name }}" 
+                            data-id="{{ repo.installation_id }}"
+                            class="flex-1 md:flex-none py-2 px-4 rounded bg-teal-600/10 text-teal-500 hover:bg-teal-600 hover:text-white border border-teal-600/20 hover:border-teal-500 transition-all text-sm font-medium flex items-center justify-center gap-2">
+                        <i class="fas fa-radar"></i> <span class="hidden md:inline">Trigger</span> Scan
+                    </button>
+                    
+                    <button data-action="autofix" 
+                            data-repo="{{ repo.full_name }}" 
+                            data-id="{{ repo.installation_id }}"
+                            class="flex-1 md:flex-none py-2 px-4 rounded bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white border border-zinc-700 transition-all text-sm font-medium flex items-center justify-center gap-2">
+                        <i class="fas fa-wrench"></i> <span class="hidden md:inline">Fix</span> Deps
+                    </button>
+                    
+                    <a href="https://github.com/{{ repo.full_name }}" target="_blank" 
+                       class="p-2 rounded bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:border-zinc-600 transition-colors"
+                       title="View on GitHub">
+                        <i class="fas fa-external-link-alt"></i>
                     </a>
                 </div>
             </div>
             {% endfor %}
             
-            <!-- Add More Card -->
-            <a href="https://github.com/apps/vulnrix/installations/new" target="_blank" 
-               class="card bg-zinc-900/20 border border-dashed border-zinc-800 rounded-xl overflow-hidden hover:border-teal-500/50 hover:bg-teal-900/5 transition-all flex flex-col items-center justify-center min-h-[200px] group cursor-pointer">
-                <div class="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center border border-zinc-800 group-hover:border-teal-500/30 group-hover:scale-110 transition-all mb-3">
-                    <i class="fas fa-plus text-zinc-500 group-hover:text-teal-500"></i>
-                </div>
-                <span class="text-sm font-medium text-zinc-500 group-hover:text-teal-400">Add Repositories</span>
-            </a>
+            {% if not repos %}
+            <div class="text-center py-12 border border-dashed border-zinc-800 rounded-lg">
+                <p class="text-zinc-500">No repositories found for this installation.</p>
+                <a href="https://github.com/apps/vulnrix/installations/new" target="_blank" class="text-teal-500 hover:underline mt-2 inline-block">
+                    Check Permissions
+                </a>
+            </div>
+            {% endif %}
         </div>
         {% endif %}
         
