@@ -150,6 +150,24 @@
 {% csrf_token %}
 
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Event Delegation
+    document.body.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        
+        const action = btn.dataset.action;
+        const repo = btn.dataset.repo;
+        const id = btn.dataset.id;
+        
+        if (action === 'scan') {
+            triggerScan(repo, id);
+        } else if (action === 'autofix') {
+            triggerAutoFix(repo, id);
+        }
+    });
+});
+
 function showToast(msg, type='success') {
     const toast = document.getElementById('toast');
     const msgEl = document.getElementById('toastMsg');
