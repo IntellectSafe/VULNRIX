@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}GitHub Dashboard - VULNRIX{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-black text-foreground font-sans selection:bg-teal-500/30">
+    
+    <!-- Header -->
+    <header class="border-b border-zinc-800 bg-black/50 backdrop-blur-md sticky top-0 z-50">
+        <div class="container mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/20">
+                    <i class="fas fa-shield-alt text-white text-sm"></i>
+                </div>
+                <span class="font-bold text-lg tracking-tight">VULNRIX <span class="text-zinc-500 font-normal">| GitHub</span></span>
+            </div>
+            
+            <nav class="flex items-center gap-4">
+                <a href="{% url 'vuln_scan:dashboard' %}" class="text-sm text-zinc-400 hover:text-white transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i> Back to Scanner
+                </a>
+                <div class="h-4 w-px bg-zinc-800"></div>
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700">
+                        <i class="fas fa-user text-xs text-zinc-400"></i>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+        
+        <!-- Welcome Section -->
+        <div class="mb-12">
+            <h1 class="text-3xl font-bold mb-2 bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">GitHub Integration</h1>
+            <p class="text-zinc-400 max-w-2xl">
+                Manage your connected repositories, view security insights, and automate vulnerability fixes.
+            </p>
+        </div>
+
+        {% if not connected %}
+        <!-- Not Connected State -->
+        <div class="flex flex-col items-center justify-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/20">
+            <div class="w-24 h-24 bg-zinc-900 rounded-full flex items-center justify-center mb-6 border border-zinc-700 shadow-xl">
+                <i class="fab fa-github text-5xl text-white"></i>
+            </div>
+            <h2 class="text-xl font-semibold mb-3">Connect Your GitHub</h2>
+            <p class="text-zinc-400 text-center max-w-md mb-8">
+                Install the VULNRIX GitHub App to enable automatic PR security reviews, 
+                push-triggered scans, and AI-powered dependency fix PRs.
+            </p>
+            <a href="https://github.com/apps/vulnrix/installations/new" 
+               target="_blank"
+               class="btn bg-white text-black hover:bg-zinc-200 font-medium px-8 py-3 rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-white/10">
+                <i class="fab fa-github"></i>
+                Install VULNRIX App
+            </a>
+            
+            <div class="grid grid-cols-3 gap-8 mt-12 text-center">
+                <div>
+                    <div class="w-10 h-10 bg-teal-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-code-branch text-teal-500"></i>
+                    </div>
+                    <h3 class="font-medium text-sm text-zinc-300">Auto PR Reviews</h3>
+                </div>
+                <div>
+                    <div class="w-10 h-10 bg-teal-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-search text-teal-500"></i>
+                    </div>
+                    <h3 class="font-medium text-sm text-zinc-300">Push Scanning</h3>
+                </div>
+                <div>
+                    <div class="w-10 h-10 bg-teal-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-robot text-teal-500"></i>
+                    </div>
+                    <h3 class="font-medium text-sm text-zinc-300">AI Auto-Fixes</h3>
+                </div>
+            </div>
+        </div>
+        
+        {% else %}
+        <!-- Connected State -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for repo in repos %}
+            <div class="card bg-zinc-900/40 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-700 transition-all group">
+                <div class="p-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <i class="fab fa-github text-xl text-zinc-400 group-hover:text-white transition-colors"></i>
+                            <div>
+                                <h3 class="font-semibold text-zinc-200 group-hover:text-teal-400 transition-colors">{{ repo.full_name }}</h3>
+                                <span class="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
+                                    {{ repo.private|yesno:"Private,Public" }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="text-xs text-zinc-500 font-mono">
+                            ID: {{ repo.id }}
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3 mt-6">
+                        <button onclick="triggerScan('{{ repo.full_name }}', {{ repo.installation_id }})" 
+                                class="w-full py-2 px-4 rounded bg-teal-600/10 text-teal-500 hover:bg-teal-600 hover:text-white border border-teal-600/20 hover:border-teal-500 transition-all text-sm font-medium flex items-center justify-center gap-2">
+                            <i class="fas fa-radar"></i> Trigger Scan
+                        </button>
+                        
+                        <button onclick="triggerAutoFix('{{ repo.full_name }}', {{ repo.installation_id }})"
+                                class="w-full py-2 px-4 rounded bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white border border-zinc-700 transition-all text-sm font-medium flex items-center justify-center gap-2">
+                            <i class="fas fa-wrench"></i> Check & Fix Deps
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="bg-black/20 px-6 py-3 border-t border-zinc-800 flex justify-between items-center text-xs text-zinc-500">
+                    <span>Installation: {{ repo.installation_id }}</span>
+                    <a href="https://github.com/{{ repo.full_name }}" target="_blank" class="hover:text-white">
+                        View on GitHub <i class="fas fa-external-link-alt ml-1"></i>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+            
+            <!-- Add More Card -->
+            <a href="https://github.com/apps/vulnrix/installations/new" target="_blank" 
+               class="card bg-zinc-900/20 border border-dashed border-zinc-800 rounded-xl overflow-hidden hover:border-teal-500/50 hover:bg-teal-900/5 transition-all flex flex-col items-center justify-center min-h-[200px] group cursor-pointer">
+                <div class="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center border border-zinc-800 group-hover:border-teal-500/30 group-hover:scale-110 transition-all mb-3">
+                    <i class="fas fa-plus text-zinc-500 group-hover:text-teal-500"></i>
+                </div>
+                <span class="text-sm font-medium text-zinc-500 group-hover:text-teal-400">Add Repositories</span>
+            </a>
+        </div>
+        {% endif %}
+        
+    </main>
+    
+    <!-- Toast/Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 px-6 py-4 rounded-lg bg-zinc-900 border border-zinc-800 shadow-2xl transform translate-y-24 transition-transform z-50 flex items-center gap-3">
+        <div id="toastIcon"></div>
+        <div id="toastMsg" class="text-sm font-medium text-white"></div>
+    </div>
+
+</div>
+
+{% csrf_token %}
+
+<script>
+function showToast(msg, type='success') {
+    const toast = document.getElementById('toast');
+    const msgEl = document.getElementById('toastMsg');
+    const iconEl = document.getElementById('toastIcon');
+    
+    msgEl.innerText = msg;
+    
+    if (type === 'success') {
+        iconEl.innerHTML = '<i class="fas fa-check-circle text-green-500 text-lg"></i>';
+        toast.className = "fixed bottom-6 right-6 px-6 py-4 rounded-lg bg-zinc-900 border border-green-900/30 shadow-2xl transform transition-transform z-50 flex items-center gap-3";
+    } else {
+        iconEl.innerHTML = '<i class="fas fa-exclamation-circle text-red-500 text-lg"></i>';
+        toast.className = "fixed bottom-6 right-6 px-6 py-4 rounded-lg bg-zinc-900 border border-red-900/30 shadow-2xl transform transition-transform z-50 flex items-center gap-3";
+    }
+    
+    // Slide up
+    toast.classList.remove('translate-y-24');
+    
+    // Hide after 3s
+    setTimeout(() => {
+        toast.classList.add('translate-y-24');
+    }, 3000);
+}
+
+async function triggerScan(repoFullName, installationId) {
+    showToast(`Queuing scan for ${repoFullName}...`, 'success');
+    
+    try {
+        const response = await fetch('{% url "github_app:scan_repo" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                repo_full_name: repoFullName,
+                installation_id: installationId
+            })
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            showToast('Scan started successfully!', 'success');
+        } else {
+            showToast(data.error || 'Scan failed', 'error');
+        }
+    } catch (e) {
+        showToast('Network error', 'error');
+    }
+}
+
+async function triggerAutoFix(repoFullName, installationId) {
+    showToast(`Checking vulnerabilities for ${repoFullName}...`, 'success');
+    
+    try {
+        const response = await fetch('{% url "github_app:auto_fix" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                repo_full_name: repoFullName,
+                installation_id: installationId,
+                findings: [] // In real flow, fetch findings first
+            })
+        });
+        
+        const data = await response.json();
+        if (data.pr_url) {
+            showToast('Fix PR Created!', 'success');
+            window.open(data.pr_url, '_blank');
+        } else {
+            showToast(data.message || 'No fixes needed', 'success');
+        }
+    } catch (e) {
+        showToast('Network error', 'error');
+    }
+}
+</script>
+{% endblock %}

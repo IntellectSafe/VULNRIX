@@ -9,8 +9,10 @@ import logging
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.shortcuts import redirect, render
 from django.conf import settings
 import os
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -368,5 +370,44 @@ def trigger_auto_fix(request):
             return JsonResponse({"message": "No fixes needed or PR creation failed"})
     except Exception as e:
         logger.error(f"Auto-fix failed: {e}")
-        return JsonResponse({"error": str(e)}, status=500)
+@login_required
+def github_dashboard(request):
+    """
+    Dedicated dashboard for GitHub integration.
+    Shows connected repos and actions.
+    """
+    from vuln_scan.web_dashboard.models import GitHubInstallation
+    from .services import github_app
+    import requests as http_requests
+
+    user_installations = GitHubInstallation.objects.filter(user=request.user)
+    
+    # Check if connected
+    connected = user_installations.exists()
+    repos_list = []
+    
+    if connected:
+        for install in user_installations:
+            try:
+                token = github_app.get_installation_token(install.installation_id)
+                response = http_requests.get(
+                    "https://api.github.com/installation/repositories",
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Accept": "application/vnd.github+json",
+                    },
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    for r in data.get('repositories', []):
+                        r['installation_id'] = install.installation_id
+                        repos_list.append(r)
+            except Exception as e:
+                logger.error(f"Error fetching repos for {install}: {e}")
+
+    return render(request, 'github_app/dashboard.html', {
+        'connected': connected,
+        'repos': repos_list,
+    })
 
