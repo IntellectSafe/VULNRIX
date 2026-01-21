@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'accounts',
     'vuln_scan.web_dashboard',
     'vuln_scan.nodes',
+    'vuln_scan.github_app',
 ]
 
 MIDDLEWARE = [
